@@ -68,6 +68,7 @@ def triage_ticket(request: TriageRequest) -> TriageResponse:
         intent=result["intent"],
         risk_level=result["risk_level"],
         needs_human_review=result["needs_human_review"],
+        approval_status=result["approval_status"],
         confidence=result["confidence"],
         decision_summary=result["decision_summary"],
         workflow_path=result["workflow_path"],

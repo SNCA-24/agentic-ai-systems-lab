@@ -33,6 +33,7 @@ def test_triage_endpoint_routes_billing_ticket():
     assert body["category"] == "billing"
     assert body["risk_level"] == "medium"
     assert body["needs_human_review"] is False
+    assert body["approval_status"] == "not_required"
     assert body["workflow_path"] == [
         "validate_input",
         "classify_ticket",
@@ -55,6 +56,7 @@ def test_triage_endpoint_routes_high_risk_ticket():
     assert body["category"] == "technical"
     assert body["risk_level"] == "high"
     assert body["needs_human_review"] is True
+    assert body["approval_status"] == "pending"
     assert body["workflow_path"] == [
         "validate_input",
         "classify_ticket",
@@ -62,6 +64,7 @@ def test_triage_endpoint_routes_high_risk_ticket():
     ]
     assert body["trace_events_count"] == 3
     assert body["final_response"].startswith("This request appears high-risk")
+    assert "pending human approval" in body["final_response"]
 
 
 def test_triage_endpoint_handles_empty_ticket():
@@ -77,6 +80,7 @@ def test_triage_endpoint_handles_empty_ticket():
     body = response.json()
     assert body["category"] == "unknown"
     assert body["intent"] == "empty_message"
+    assert body["approval_status"] == "not_required"
     assert body["workflow_path"] == [
         "validate_input",
         "error_node",

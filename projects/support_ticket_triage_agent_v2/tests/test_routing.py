@@ -31,6 +31,7 @@ def test_billing_ticket_routes_to_billing_node():
     assert result["category"] == "billing"
     assert result["risk_level"] == "medium"
     assert result["needs_human_review"] is False
+    assert result["approval_status"] == "not_required"
     assert result["workflow_path"] == [
         "validate_input",
         "classify_ticket",
@@ -44,6 +45,7 @@ def test_technical_ticket_routes_to_technical_node():
     assert result["category"] == "technical"
     assert result["risk_level"] == "medium"
     assert result["needs_human_review"] is False
+    assert result["approval_status"] == "not_required"
     assert result["workflow_path"] == [
         "validate_input",
         "classify_ticket",
@@ -73,6 +75,7 @@ def test_general_ticket_routes_to_general_node():
     assert result["category"] == "general"
     assert result["risk_level"] == "low"
     assert result["needs_human_review"] is False
+    assert result["approval_status"] == "not_required"
     assert result["workflow_path"] == [
         "validate_input",
         "classify_ticket",
@@ -85,6 +88,7 @@ def test_empty_ticket_routes_to_error_node():
 
     assert result["category"] == "unknown"
     assert result["intent"] == "empty_message"
+    assert result["approval_status"] == "not_required"
     assert result["workflow_path"] == [
         "validate_input",
         "error_node",

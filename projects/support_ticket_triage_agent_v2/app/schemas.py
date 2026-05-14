@@ -26,6 +26,7 @@ class TriageResponse(BaseModel):
     intent: str
     risk_level: Literal["low", "medium", "high"]
     needs_human_review: bool
+    approval_status: Literal["not_required", "pending", "approved", "rejected", "expired"]
     confidence: float | None
     decision_summary: str | None
     workflow_path: list[str]
