@@ -1,10 +1,8 @@
-
-
 # Support Ticket Triage Agent v2
 
 A production-style graph-orchestrated AI agent for support ticket triage.
 
-This project demonstrates how to design an enterprise-style agent workflow using explicit state, graph-based routing, structured classification, risk-aware handling, trace events, local evaluations, and LangSmith observability metadata.
+This project demonstrates how to design an enterprise-style agent workflow using explicit state, graph-based routing, structured classification, risk-aware handling, trace events, local evaluations, FastAPI service endpoints, and LangSmith observability metadata.
 
 The goal is not to build a toy chatbot. The goal is to show how an AI agent can be engineered as a controlled workflow where the LLM classifies, deterministic code routes, high-risk requests are isolated, and every run can be evaluated and traced.
 
@@ -23,13 +21,16 @@ Implemented:
 - Workflow path tracking
 - Structured trace events
 - Local evaluation runner
-- LangSmith metadata and tags for demo/eval runs
+- LangSmith metadata and tags for demo/eval/API runs
+- FastAPI service layer with `/health` and `/tickets/triage`
+- API tests using FastAPI `TestClient`
 - GitHub monorepo integration
 
-Current eval status:
+Current eval/test status:
 
 ```text
 Passed 5/5 evals
+pytest: 18/18 passed
 ```
 
 ---
@@ -226,17 +227,18 @@ This is a lightweight local observability layer before deeper production monitor
 
 ### 7. LangSmith Observability Metadata
 
-The graph is invoked with LangSmith-friendly config metadata and tags for both demo and eval runs.
+The graph is invoked with LangSmith-friendly config metadata and tags for demo, eval, and API runs.
 
 Tracked metadata includes:
 
 - ticket ID
 - classifier mode
-- run source: `main` or `eval`
+- run source: `main`, `eval`, or `api`
 - environment
 - expected category
 - expected risk level
 - expected final node
+- LangSmith project name
 
 Useful tags include:
 
@@ -244,6 +246,7 @@ Useful tags include:
 support-ticket-triage
 demo-run
 eval-run
+api-run
 classifier:mock
 env:local
 ```
@@ -258,6 +261,7 @@ This makes runs easier to filter and inspect in LangSmith.
 support_ticket_triage_agent_v2/
 ├── app/
 │   ├── __init__.py
+│   ├── api.py
 │   ├── config.py
 │   ├── graph.py
 │   ├── nodes.py
@@ -353,6 +357,68 @@ Passed 5/5 evals
 
 ---
 
+## Running Tests
+
+```zsh
+pytest
+```
+
+The test suite covers:
+
+- mock classifier behavior
+- graph routing behavior
+- high-risk isolation
+- empty input handling
+- trace event recording
+- FastAPI health check
+- FastAPI triage endpoint behavior
+
+Current expected result:
+
+```text
+18 passed
+```
+
+---
+
+## Running the FastAPI Service
+
+Run the FastAPI development server with:
+
+```zsh
+uvicorn app.api:app --reload
+```
+
+Check health endpoint:
+
+```zsh
+curl http://127.0.0.1:8000/health
+```
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "classifier_mode": "mock",
+  "environment": "local"
+}
+```
+
+Submit a ticket for triage:
+
+```zsh
+curl -X POST http://127.0.0.1:8000/tickets/triage \
+  -H "Content-Type: application/json" \
+  -d '{"ticket_id": "123", "user_message": "My app crashes on upload."}'
+```
+
+View interactive API docs at:
+
+[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
 ## Example Tickets
 
 ### Technical Ticket
@@ -410,6 +476,7 @@ Track trace events for debugging.
 Route high-risk requests to review.
 Run local evals in mock mode to control cost.
 Attach LangSmith metadata for observability.
+Use FastAPI for service endpoints.
 ```
 
 ---
@@ -423,7 +490,7 @@ This version does not yet include:
 - RAG over policy documents
 - human approval interrupts
 - persistent checkpointing
-- FastAPI deployment
+- FastAPI deployment beyond local dev
 - production auth/security
 - LangSmith dataset-based experiments
 
@@ -446,7 +513,7 @@ These are planned future extensions.
 
 ## Resume Bullet
 
-Built a LangGraph-based support ticket triage agent with typed state, structured classification, deterministic routing, risk-aware high-risk review, workflow-path tracking, trace events, local evaluation tests, cost-safe mock mode, and LangSmith observability metadata.
+Built a LangGraph-based support ticket triage agent with typed state, structured classification, deterministic routing, risk-aware high-risk review, workflow-path tracking, trace events, local evals, pytest coverage, FastAPI service endpoints, cost-safe mock mode, and LangSmith observability metadata.
 
 ---
 
