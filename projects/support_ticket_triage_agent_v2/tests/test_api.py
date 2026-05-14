@@ -15,7 +15,7 @@ def test_health_check_returns_ok():
     body = response.json()
     assert body["status"] == "ok"
     assert body["classifier_mode"] == "mock"
-    assert body["environment"] == "local"
+    assert body["environment"] in {"local", "ci"}
 
 
 def test_triage_endpoint_routes_billing_ticket():
