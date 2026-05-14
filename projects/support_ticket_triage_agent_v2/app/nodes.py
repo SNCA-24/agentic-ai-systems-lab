@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-from app.config import OPENAI_MODEL
+from app.config import CLASSIFIER_MODE, OPENAI_MODEL
 from app.schemas import TicketClassification
 from app.state import AgentState
 
@@ -59,9 +59,95 @@ def validate_input(state: AgentState) -> dict:
 
 
 
+def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
+    """
+    Local deterministic classifier for development and evaluation.
+    This avoids paid LLM calls during frequent local runs.
+    """
+    message = state["user_message"].lower()
+
+    high_risk_keywords = [
+        "delete all",
+        "deleted 80",
+        "80 users",
+        "restore them",
+        "restore users",
+        "admin access",
+        "permission change",
+        "large refund",
+        "$2000",
+        "$2,000",
+        "security incident",
+        "data loss",
+    ]
+
+    if any(keyword in message for keyword in high_risk_keywords):
+        return {
+            "workflow_path": path,
+            "category": "technical",
+            "intent": "high_risk_account_or_financial_action",
+            "risk_level": "high",
+            "needs_human_review": True,
+            "confidence": 0.99,
+            "decision_summary": "Mock classifier detected a high-risk account, permission, security, or financial action.",
+        }
+
+    if "refund" in message:
+        return {
+            "workflow_path": path,
+            "category": "refund",
+            "intent": "standard_refund_request",
+            "risk_level": "medium",
+            "needs_human_review": False,
+            "confidence": 0.95,
+            "decision_summary": "Mock classifier detected a standard refund request.",
+        }
+
+    if "charged" in message or "charge" in message or "invoice" in message or "billing" in message:
+        return {
+            "workflow_path": path,
+            "category": "billing",
+            "intent": "billing_or_duplicate_charge_issue",
+            "risk_level": "medium",
+            "needs_human_review": False,
+            "confidence": 0.95,
+            "decision_summary": "Mock classifier detected a billing or duplicate-charge issue.",
+        }
+
+    if (
+        "crash" in message
+        or "bug" in message
+        or "upload" in message
+        or "login" in message
+        or "locked" in message
+    ):
+        return {
+            "workflow_path": path,
+            "category": "technical",
+            "intent": "technical_issue",
+            "risk_level": "medium",
+            "needs_human_review": False,
+            "confidence": 0.95,
+            "decision_summary": "Mock classifier detected a technical support issue.",
+        }
+
+    return {
+        "workflow_path": path,
+        "category": "general",
+        "intent": "general_support_question",
+        "risk_level": "low",
+        "needs_human_review": False,
+        "confidence": 0.95,
+        "decision_summary": "Mock classifier detected a general support question.",
+    }
+
 def classify_ticket(state: AgentState) -> dict:
 
     path = state["workflow_path"] + ["classify_ticket"]
+
+    if CLASSIFIER_MODE == "mock":
+        return classify_ticket_mock(state, path)
+
     try:
         response = client.responses.parse(
             model=OPENAI_MODEL,

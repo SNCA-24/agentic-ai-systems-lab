@@ -13,6 +13,7 @@ def run_ticket(ticket_id: str, user_message: str):
         "confidence": None,
         "decision_summary": None,
         "workflow_path": [],
+        # "trace_events": [],
         "errors": [],
         "final_response": None,
     }
@@ -43,5 +44,6 @@ if __name__ == "__main__":
         print("Confidence:", result["confidence"])
         print("Decision summary:", result["decision_summary"])
         print("Workflow path:", result["workflow_path"])
+        # print("Trace events:", result["trace_events"])
         print("Response:", result["final_response"])
         print("Errors:", result["errors"])
