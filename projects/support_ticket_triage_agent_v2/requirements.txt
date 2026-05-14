@@ -3,3 +3,4 @@ pydantic
 typing-extensions
 openai
 python-dotenv
+pytest
