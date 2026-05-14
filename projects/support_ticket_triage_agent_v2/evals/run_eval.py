@@ -58,6 +58,10 @@ def run_single_eval(test_case: dict) -> dict:
     result = ticket_graph.invoke(initial_state, config=config)
 
     expected_final_node = test_case.get("expected_final_node")
+    expected_approval_status = test_case.get(
+        "expected_approval_status",
+        "pending" if test_case["expected_needs_human_review"] else "not_required",
+    )
     actual_final_node = result["workflow_path"][-1] if result.get("workflow_path") else None
     trace_events_count = len(result.get("trace_events", []))
 
@@ -67,6 +71,7 @@ def run_single_eval(test_case: dict) -> dict:
         "human_review_correct": (
             result["needs_human_review"] == test_case["expected_needs_human_review"]
         ),
+        "approval_status_correct": result["approval_status"] == expected_approval_status,
         "trace_events_recorded": trace_events_count >= 3,
     }
 
@@ -81,6 +86,7 @@ def run_single_eval(test_case: dict) -> dict:
             "category": test_case["expected_category"],
             "risk_level": test_case["expected_risk_level"],
             "needs_human_review": test_case["expected_needs_human_review"],
+            "approval_status": expected_approval_status,
             "final_node": expected_final_node,
         },
         "actual": {
@@ -88,6 +94,7 @@ def run_single_eval(test_case: dict) -> dict:
             "intent": result["intent"],
             "risk_level": result["risk_level"],
             "needs_human_review": result["needs_human_review"],
+            "approval_status": result["approval_status"],
             "confidence": result["confidence"],
             "decision_summary": result["decision_summary"],
             "workflow_path": result.get("workflow_path", []),
