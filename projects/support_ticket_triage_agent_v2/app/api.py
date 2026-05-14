@@ -1,5 +1,3 @@
-
-
 from fastapi import FastAPI
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
