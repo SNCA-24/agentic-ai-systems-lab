@@ -25,6 +25,7 @@ Implemented:
 - FastAPI service layer with `/health` and `/tickets/triage`
 - API tests using FastAPI `TestClient`
 - GitHub monorepo integration
+- GitHub Actions CI for pytest and local evals
 
 Current eval/test status:
 
@@ -273,6 +274,13 @@ support_ticket_triage_agent_v2/
 │   ├── run_eval.py
 │   └── test_cases.json
 │
+├── tests/
+│   ├── __init__.py
+│   ├── test_api.py
+│   ├── test_mock_classifier.py
+│   ├── test_routing.py
+│   └── test_trace_events.py
+│
 ├── .env.example
 ├── .gitignore
 ├── main.py
@@ -378,6 +386,34 @@ Current expected result:
 ```text
 18 passed
 ```
+
+---
+
+## Continuous Integration
+
+This project includes a GitHub Actions workflow at the repository root:
+
+```text
+.github/workflows/support-ticket-triage-ci.yml
+```
+
+The CI workflow runs on pushes and pull requests that affect this project. It uses cost-safe settings:
+
+```text
+CLASSIFIER_MODE=mock
+APP_ENV=ci
+LANGSMITH_TRACING=false
+```
+
+CI steps:
+
+```text
+install dependencies
+run pytest
+run python -m evals.run_eval
+```
+
+This keeps the project automatically verifiable without calling OpenAI or LangSmith during CI.
 
 ---
 
@@ -500,14 +536,13 @@ These are planned future extensions.
 
 ## Planned Next Steps
 
-1. Add project-level tests using `pytest`
-2. Add FastAPI endpoint for `/tickets/triage`
-3. Add human-in-the-loop approval workflow
-4. Add RAG over refund/support policy documents
-5. Add tool design layer with read/write tool separation
-6. Add persistent checkpointing
-7. Add LangSmith dataset-based evaluation
-8. Add Dockerfile and deployment guide
+1. Add human-in-the-loop approval workflow
+2. Add RAG over refund/support policy documents
+3. Add tool design layer with read/write tool separation
+4. Add persistent checkpointing
+5. Add LangSmith dataset-based evaluation
+6. Add Dockerfile and deployment guide
+7. Add deployment notes for running the FastAPI service
 
 ---
 

@@ -1,0 +1,50 @@
+name: Support Ticket Triage CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "projects/support_ticket_triage_agent_v2/**"
+      - ".github/workflows/support-ticket-triage-ci.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "projects/support_ticket_triage_agent_v2/**"
+      - ".github/workflows/support-ticket-triage-ci.yml"
+
+jobs:
+  test-support-ticket-triage-agent:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: projects/support_ticket_triage_agent_v2
+
+    env:
+      CLASSIFIER_MODE: mock
+      APP_ENV: ci
+      LANGSMITH_TRACING: "false"
+      LANGSMITH_PROJECT: support-ticket-triage-agent-v2
+      LANGSMITH_RUN_TAG_PREFIX: support-ticket-triage
+      OPENAI_MODEL: gpt-5.4-nano
+      OPENAI_API_KEY: dummy-ci-key
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest suite
+        run: pytest
+
+      - name: Run local evaluation suite
+        run: python -m evals.run_eval
