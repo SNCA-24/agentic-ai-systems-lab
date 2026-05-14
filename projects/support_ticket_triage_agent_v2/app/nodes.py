@@ -322,45 +322,97 @@ def classify_ticket(state: AgentState) -> dict:
 def billing_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["billing_node"],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="billing_node",
+            event_type="route_completed",
+            message="Ticket routed to billing workflow.",
+            metadata={
+                "category": state["category"],
+                "intent": state["intent"],
+                "risk_level": state["risk_level"],
+            },
+        ),
         "final_response": (
             "This looks like a billing-related request. "
             "Next step: check billing records and refund policy."
-        )
+        ),
     }
 
 
 def technical_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["technical_node"],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="technical_node",
+            event_type="route_completed",
+            message="Ticket routed to technical workflow.",
+            metadata={
+                "category": state["category"],
+                "intent": state["intent"],
+                "risk_level": state["risk_level"],
+            },
+        ),
         "final_response": (
             "This looks like a technical issue. "
             "Next step: collect diagnostics such as app version, device, logs, and error details."
-        )
+        ),
     }
 
 
 def general_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["general_node"],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="general_node",
+            event_type="route_completed",
+            message="Ticket routed to general support workflow.",
+            metadata={
+                "category": state["category"],
+                "intent": state["intent"],
+                "risk_level": state["risk_level"],
+            },
+        ),
         "final_response": (
             "This looks like a general support request. "
             "Next step: answer directly or search the help center."
-        )
+        ),
     }
 
 
 def high_risk_review_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["high_risk_review_node"],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="high_risk_review_node",
+            event_type="human_review_required",
+            message="High-risk ticket routed to human review.",
+            metadata={
+                "category": state["category"],
+                "intent": state["intent"],
+                "risk_level": state["risk_level"],
+                "needs_human_review": state["needs_human_review"],
+            },
+        ),
         "final_response": (
             "This request appears high-risk and requires human review before any action is taken. "
             "No write action has been executed."
-        )
+        ),
     }
 
 
 def error_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["error_node"],
-        "final_response": f"Could not process ticket. Errors: {state['errors']}"
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="error_node",
+            event_type="workflow_error",
+            message="Ticket routed to error workflow.",
+            metadata={"errors": state["errors"]},
+        ),
+        "final_response": f"Could not process ticket. Errors: {state['errors']}",
     }

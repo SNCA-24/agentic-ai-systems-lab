@@ -29,6 +29,7 @@ def run_single_eval(test_case: dict) -> dict:
 
     expected_final_node = test_case.get("expected_final_node")
     actual_final_node = result["workflow_path"][-1] if result.get("workflow_path") else None
+    trace_events_count = len(result.get("trace_events", []))
 
     checks = {
         "category_correct": result["category"] == test_case["expected_category"],
@@ -36,6 +37,7 @@ def run_single_eval(test_case: dict) -> dict:
         "human_review_correct": (
             result["needs_human_review"] == test_case["expected_needs_human_review"]
         ),
+        "trace_events_recorded": trace_events_count >= 3,
     }
 
     if expected_final_node is not None:
@@ -59,7 +61,7 @@ def run_single_eval(test_case: dict) -> dict:
             "confidence": result["confidence"],
             "decision_summary": result["decision_summary"],
             "workflow_path": result.get("workflow_path", []),
-            "trace_events_count": len(result.get("trace_events", [])),
+            "trace_events_count": trace_events_count,
             "final_node": actual_final_node,
             "final_response": result["final_response"],
             "errors": result["errors"],
