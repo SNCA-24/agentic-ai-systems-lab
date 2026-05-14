@@ -13,3 +13,22 @@ class TicketClassification(BaseModel):
     decision_summary: str = Field(
         description="Short factual summary. Do not include hidden reasoning."
     )
+
+
+class TriageRequest(BaseModel):
+    ticket_id: str = Field(description="Unique ticket identifier.")
+    user_message: str = Field(description="Raw support ticket message submitted by the user.")
+
+
+class TriageResponse(BaseModel):
+    ticket_id: str
+    category: Literal["billing", "refund", "technical", "general", "unknown"]
+    intent: str
+    risk_level: Literal["low", "medium", "high"]
+    needs_human_review: bool
+    confidence: float | None
+    decision_summary: str | None
+    workflow_path: list[str]
+    trace_events_count: int
+    final_response: str | None
+    errors: list[str]
