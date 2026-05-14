@@ -22,7 +22,7 @@ Implemented:
 - Structured trace events
 - Local evaluation runner
 - LangSmith metadata and tags for demo/eval/API runs
-- FastAPI service layer with `/health` and `/tickets/triage`
+- FastAPI service layer with `/health`, `/tickets/triage`, and `/tickets/{ticket_id}/approval`
 - API tests using FastAPI `TestClient`
 - GitHub monorepo integration
 - GitHub Actions CI for pytest and local evals
@@ -380,6 +380,7 @@ The test suite covers:
 - trace event recording
 - FastAPI health check
 - FastAPI triage endpoint behavior
+- FastAPI approval endpoint behavior
 
 Current expected result:
 
@@ -448,6 +449,28 @@ curl -X POST http://127.0.0.1:8000/tickets/triage \
   -H "Content-Type: application/json" \
   -d '{"ticket_id": "123", "user_message": "My app crashes on upload."}'
 ```
+
+Record a human approval decision:
+
+```zsh
+curl -X POST http://127.0.0.1:8000/tickets/CURL-002/approval \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true, "approval_id": "approval_123", "approved_by": "manager_001", "approval_notes": "Requester verified and action approved."}'
+```
+
+Expected key fields:
+
+```json
+{
+  "ticket_id": "CURL-002",
+  "approval_status": "approved",
+  "approval_id": "approval_123",
+  "approved_by": "manager_001",
+  "message": "Approval recorded. Workflow resume is not implemented yet."
+}
+```
+
+Important: this approval endpoint records a typed approval decision only. Durable graph resume and checkpointing are planned for a later step.
 
 View interactive API docs at:
 
@@ -524,7 +547,7 @@ This version does not yet include:
 - real billing tools
 - real CRM tools
 - RAG over policy documents
-- human approval interrupts
+- durable human approval interrupts and graph resume
 - persistent checkpointing
 - FastAPI deployment beyond local dev
 - production auth/security
@@ -536,7 +559,7 @@ These are planned future extensions.
 
 ## Planned Next Steps
 
-1. Add human-in-the-loop approval workflow
+1. Add durable human-in-the-loop approval resume with checkpointing
 2. Add RAG over refund/support policy documents
 3. Add tool design layer with read/write tool separation
 4. Add persistent checkpointing

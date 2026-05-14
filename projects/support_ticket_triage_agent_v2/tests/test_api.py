@@ -1,5 +1,3 @@
-
-
 from fastapi.testclient import TestClient
 
 from app.api import app
@@ -87,3 +85,64 @@ def test_triage_endpoint_handles_empty_ticket():
     ]
     assert body["trace_events_count"] == 2
     assert body["errors"] == ["Empty user message"]
+
+
+def test_approval_endpoint_records_approved_decision():
+    response = client.post(
+        "/tickets/API-004/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_123",
+            "approved_by": "manager_001",
+            "approval_notes": "Requester verified and action approved.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ticket_id"] == "API-004"
+    assert body["approval_status"] == "approved"
+    assert body["approval_id"] == "approval_123"
+    assert body["approved_by"] == "manager_001"
+    assert body["approval_notes"] == "Requester verified and action approved."
+    assert body["message"] == "Approval recorded. Workflow resume is not implemented yet."
+
+
+def test_approval_endpoint_rejects_missing_approval_id_for_approved_decision():
+    response = client.post(
+        "/tickets/API-005/approval",
+        json={
+            "approved": True,
+            "approved_by": "manager_001",
+            "approval_notes": "Missing approval ID.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ticket_id"] == "API-005"
+    assert body["approval_status"] == "rejected"
+    assert body["approval_id"] is None
+    assert body["approved_by"] == "manager_001"
+    assert body["approval_notes"] == "Missing approval ID."
+    assert body["message"] == "Approval was not accepted because approval_id is required when approved is true."
+
+
+def test_approval_endpoint_records_rejected_decision():
+    response = client.post(
+        "/tickets/API-006/approval",
+        json={
+            "approved": False,
+            "approved_by": "manager_001",
+            "approval_notes": "Requester verification failed.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ticket_id"] == "API-006"
+    assert body["approval_status"] == "rejected"
+    assert body["approval_id"] is None
+    assert body["approved_by"] == "manager_001"
+    assert body["approval_notes"] == "Requester verification failed."
+    assert body["message"] == "Approval rejected. No write action has been executed."
