@@ -57,12 +57,14 @@ def test_high_risk_ticket_routes_to_review_node():
     assert result["category"] == "technical"
     assert result["risk_level"] == "high"
     assert result["needs_human_review"] is True
+    assert result["approval_status"] == "pending"
     assert result["workflow_path"] == [
         "validate_input",
         "classify_ticket",
         "high_risk_review_node",
     ]
     assert result["final_response"].startswith("This request appears high-risk")
+    assert "pending human approval" in result["final_response"]
 
 
 def test_general_ticket_routes_to_general_node():

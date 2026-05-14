@@ -385,6 +385,7 @@ def general_node(state: AgentState) -> dict:
 def high_risk_review_node(state: AgentState) -> dict:
     return {
         "workflow_path": state["workflow_path"] + ["high_risk_review_node"],
+        "approval_status": "pending",
         "trace_events": add_trace_event(
             state["trace_events"],
             node="high_risk_review_node",
@@ -395,10 +396,11 @@ def high_risk_review_node(state: AgentState) -> dict:
                 "intent": state["intent"],
                 "risk_level": state["risk_level"],
                 "needs_human_review": state["needs_human_review"],
+                "approval_status": "pending",
             },
         ),
         "final_response": (
-            "This request appears high-risk and requires human review before any action is taken. "
+            "This request appears high-risk and has been marked as pending human approval. "
             "No write action has been executed."
         ),
     }
