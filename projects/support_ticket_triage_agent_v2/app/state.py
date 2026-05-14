@@ -4,6 +4,7 @@ from typing_extensions import TypedDict
 
 Category = Literal["billing", "refund", "technical", "general", "unknown"]
 RiskLevel = Literal["low", "medium", "high"]
+ApprovalStatus = Literal["not_required", "pending", "approved", "rejected", "expired"]
 
 
 class TraceEvent(TypedDict):
@@ -24,6 +25,11 @@ class AgentState(TypedDict):
 
     confidence: Optional[float]
     decision_summary: Optional[str]
+
+    approval_status: ApprovalStatus
+    approval_id: Optional[str]
+    approval_notes: Optional[str]
+    approved_by: Optional[str]
 
     workflow_path: list[str]
     trace_events: list[TraceEvent]

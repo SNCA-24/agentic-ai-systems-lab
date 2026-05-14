@@ -1,5 +1,3 @@
-
-
 from app.graph import ticket_graph
 from app.state import AgentState
 
@@ -14,6 +12,10 @@ def run_graph(message: str, ticket_id: str = "TEST-TRACE-001") -> AgentState:
         "needs_human_review": False,
         "confidence": None,
         "decision_summary": None,
+        "approval_status": "not_required",
+        "approval_id": None,
+        "approval_notes": None,
+        "approved_by": None,
         "workflow_path": [],
         "trace_events": [],
         "errors": [],
