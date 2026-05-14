@@ -1,9 +1,16 @@
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from typing_extensions import TypedDict
 
 
 Category = Literal["billing", "refund", "technical", "general", "unknown"]
 RiskLevel = Literal["low", "medium", "high"]
+
+
+class TraceEvent(TypedDict):
+    node: str
+    event_type: str
+    message: str
+    metadata: dict[str, Any]
 
 
 class AgentState(TypedDict):
@@ -19,6 +26,7 @@ class AgentState(TypedDict):
     decision_summary: Optional[str]
 
     workflow_path: list[str]
+    trace_events: list[TraceEvent]
 
     errors: list[str]
     final_response: Optional[str]
