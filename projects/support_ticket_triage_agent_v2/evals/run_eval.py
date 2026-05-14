@@ -20,6 +20,7 @@ def run_single_eval(test_case: dict) -> dict:
         "confidence": None,
         "decision_summary": None,
         "workflow_path": [],
+        "trace_events": [],
         "errors": [],
         "final_response": None,
     }
@@ -58,6 +59,7 @@ def run_single_eval(test_case: dict) -> dict:
             "confidence": result["confidence"],
             "decision_summary": result["decision_summary"],
             "workflow_path": result.get("workflow_path", []),
+            "trace_events_count": len(result.get("trace_events", [])),
             "final_node": actual_final_node,
             "final_response": result["final_response"],
             "errors": result["errors"],

@@ -1,8 +1,10 @@
+from typing import Any
+
 from openai import OpenAI
 
 from app.config import CLASSIFIER_MODE, OPENAI_MODEL
 from app.schemas import TicketClassification
-from app.state import AgentState
+from app.state import AgentState, TraceEvent
 
 
 client = OpenAI()
@@ -37,6 +39,23 @@ Return only the structured classification.
 """
 
 
+def add_trace_event(
+    trace_events: list[TraceEvent],
+    node: str,
+    event_type: str,
+    message: str,
+    metadata: dict[str, Any] | None = None,
+) -> list[TraceEvent]:
+    return trace_events + [
+        {
+            "node": node,
+            "event_type": event_type,
+            "message": message,
+            "metadata": metadata or {},
+        }
+    ]
+
+
 def validate_input(state: AgentState) -> dict:
     
     path = state["workflow_path"] + ["validate_input"]
@@ -45,6 +64,13 @@ def validate_input(state: AgentState) -> dict:
     if not message:
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="validate_input",
+                event_type="validation_failed",
+                message="Ticket validation failed because user_message was empty.",
+                metadata={"ticket_id": state["ticket_id"]},
+            ),
             "errors": state["errors"] + ["Empty user message"],
             "category": "unknown",
             "intent": "empty_message",
@@ -55,7 +81,16 @@ def validate_input(state: AgentState) -> dict:
             
         }
 
-    return {"workflow_path": path}
+    return {
+        "workflow_path": path,
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="validate_input",
+            event_type="validation_passed",
+            message="Ticket input validation passed.",
+            metadata={"ticket_id": state["ticket_id"]},
+        ),
+    }
 
 
 
@@ -84,6 +119,20 @@ def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
     if any(keyword in message for keyword in high_risk_keywords):
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="mock_classification_completed",
+                message="Mock ticket classification completed.",
+                metadata={
+                    "category": "technical",
+                    "intent": "high_risk_account_or_financial_action",
+                    "risk_level": "high",
+                    "needs_human_review": True,
+                    "confidence": 0.99,
+                    "classifier_mode": CLASSIFIER_MODE,
+                },
+            ),
             "category": "technical",
             "intent": "high_risk_account_or_financial_action",
             "risk_level": "high",
@@ -95,6 +144,20 @@ def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
     if "refund" in message:
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="mock_classification_completed",
+                message="Mock ticket classification completed.",
+                metadata={
+                    "category": "refund",
+                    "intent": "standard_refund_request",
+                    "risk_level": "medium",
+                    "needs_human_review": False,
+                    "confidence": 0.95,
+                    "classifier_mode": CLASSIFIER_MODE,
+                },
+            ),
             "category": "refund",
             "intent": "standard_refund_request",
             "risk_level": "medium",
@@ -106,6 +169,20 @@ def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
     if "charged" in message or "charge" in message or "invoice" in message or "billing" in message:
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="mock_classification_completed",
+                message="Mock ticket classification completed.",
+                metadata={
+                    "category": "billing",
+                    "intent": "billing_or_duplicate_charge_issue",
+                    "risk_level": "medium",
+                    "needs_human_review": False,
+                    "confidence": 0.95,
+                    "classifier_mode": CLASSIFIER_MODE,
+                },
+            ),
             "category": "billing",
             "intent": "billing_or_duplicate_charge_issue",
             "risk_level": "medium",
@@ -123,6 +200,20 @@ def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
     ):
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="mock_classification_completed",
+                message="Mock ticket classification completed.",
+                metadata={
+                    "category": "technical",
+                    "intent": "technical_issue",
+                    "risk_level": "medium",
+                    "needs_human_review": False,
+                    "confidence": 0.95,
+                    "classifier_mode": CLASSIFIER_MODE,
+                },
+            ),
             "category": "technical",
             "intent": "technical_issue",
             "risk_level": "medium",
@@ -133,6 +224,20 @@ def classify_ticket_mock(state: AgentState, path: list[str]) -> dict:
 
     return {
         "workflow_path": path,
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="classify_ticket",
+            event_type="mock_classification_completed",
+            message="Mock ticket classification completed.",
+            metadata={
+                "category": "general",
+                "intent": "general_support_question",
+                "risk_level": "low",
+                "needs_human_review": False,
+                "confidence": 0.95,
+                "classifier_mode": CLASSIFIER_MODE,
+            },
+        ),
         "category": "general",
         "intent": "general_support_question",
         "risk_level": "low",
@@ -162,6 +267,21 @@ def classify_ticket(state: AgentState) -> dict:
 
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="llm_classification_completed",
+                message="LLM ticket classification completed.",
+                metadata={
+                    "category": classification.category,
+                    "intent": classification.intent,
+                    "risk_level": classification.risk_level,
+                    "needs_human_review": classification.needs_human_review,
+                    "confidence": classification.confidence,
+                    "classifier_mode": CLASSIFIER_MODE,
+                    "model": OPENAI_MODEL,
+                },
+            ),
             "category": classification.category,
             "intent": classification.intent,
             "risk_level": classification.risk_level,
@@ -174,6 +294,20 @@ def classify_ticket(state: AgentState) -> dict:
     except Exception as error:
         return {
             "workflow_path": path,
+            "trace_events": add_trace_event(
+                state["trace_events"],
+                node="classify_ticket",
+                event_type="classification_failed",
+                message="Classification failed and was routed conservatively.",
+                metadata={
+                    "error": str(error),
+                    "fallback_category": "unknown",
+                    "fallback_risk_level": "medium",
+                    "fallback_needs_human_review": True,
+                    "classifier_mode": CLASSIFIER_MODE,
+                    "model": OPENAI_MODEL,
+                },
+            ),
             "errors": state["errors"] + [f"Classification failed: {str(error)}"],
             "category": "unknown",
             "intent": "classification_failed",
