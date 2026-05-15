@@ -1,6 +1,7 @@
 from langgraph.graph import StateGraph, START, END
 
 from app.state import AgentState
+from app.checkpointing import create_memory_checkpointer
 from app.nodes import (
     validate_input,
     classify_ticket,
@@ -94,6 +95,10 @@ builder.add_edge("error_node", END)
 
 ticket_graph = builder.compile()
 
+checkpointed_ticket_graph = builder.compile(
+    checkpointer=create_memory_checkpointer(),
+)
+
 approval_resume_builder = StateGraph(AgentState)
 
 approval_resume_builder.add_node("approval_resume_entry_node", approval_resume_entry_node)
@@ -120,3 +125,7 @@ approval_resume_builder.add_edge("approval_rejected_node", END)
 approval_resume_builder.add_edge("approval_blocked_node", END)
 
 approval_resume_graph = approval_resume_builder.compile()
+
+checkpointed_approval_resume_graph = approval_resume_builder.compile(
+    checkpointer=create_memory_checkpointer(),
+)
