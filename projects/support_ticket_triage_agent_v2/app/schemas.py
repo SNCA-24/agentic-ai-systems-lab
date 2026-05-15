@@ -33,3 +33,28 @@ class TriageResponse(BaseModel):
     trace_events_count: int
     final_response: str | None
     errors: list[str]
+
+
+class ApprovalRequest(BaseModel):
+    approved: bool = Field(description="Whether the human reviewer approved the pending high-risk action.")
+    approval_id: str | None = Field(
+        default=None,
+        description="Approval record ID. Required when approved is true.",
+    )
+    approved_by: str | None = Field(
+        default=None,
+        description="Identifier of the human reviewer or manager.",
+    )
+    approval_notes: str | None = Field(
+        default=None,
+        description="Short reviewer notes explaining the approval or rejection decision.",
+    )
+
+
+class ApprovalResponse(BaseModel):
+    ticket_id: str
+    approval_status: Literal["approved", "rejected"]
+    approval_id: str | None
+    approved_by: str | None
+    approval_notes: str | None
+    message: str

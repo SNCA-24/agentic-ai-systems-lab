@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
 from app.graph import ticket_graph
-from app.schemas import TriageRequest, TriageResponse
+from app.schemas import ApprovalRequest, ApprovalResponse, TriageRequest, TriageResponse
 from app.state import AgentState
 
 
@@ -75,4 +75,42 @@ def triage_ticket(request: TriageRequest) -> TriageResponse:
         trace_events_count=len(result.get("trace_events", [])),
         final_response=result["final_response"],
         errors=result["errors"],
+    )
+
+
+@app.post("/tickets/{ticket_id}/approval", response_model=ApprovalResponse)
+def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalResponse:
+    """
+    Record a human approval decision for a high-risk ticket.
+
+    This endpoint intentionally does not resume graph execution yet.
+    Durable workflow resume/checkpointing will be added in a later step.
+    """
+    if request.approved:
+        if not request.approval_id:
+            return ApprovalResponse(
+                ticket_id=ticket_id,
+                approval_status="rejected",
+                approval_id=None,
+                approved_by=request.approved_by,
+                approval_notes=request.approval_notes,
+                message="Approval was not accepted because approval_id is required when approved is true.",
+            )
+
+        return ApprovalResponse(
+            ticket_id=ticket_id,
+            approval_status="approved",
+            approval_id=request.approval_id,
+            approved_by=request.approved_by,
+            approval_notes=request.approval_notes,
+            message="Approval recorded. Workflow resume is not implemented yet.",
+        )
+
+    return ApprovalResponse(
+        ticket_id=ticket_id,
+        approval_status="rejected",
+        approval_id=request.approval_id,
+        approved_by=request.approved_by,
+        approval_notes=request.approval_notes,
+        message="Approval rejected. No write action has been executed.",
     )
