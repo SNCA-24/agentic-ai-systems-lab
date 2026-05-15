@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
-from app.approval_store import get_approval_record, save_approval_record
+from app.sqlite_approval_store import get_approval_record, save_approval_record
 from app.graph import approval_resume_graph, ticket_graph
 from app.schemas import (
     ApprovalRecord,
@@ -137,8 +137,8 @@ def get_approval(ticket_id: str) -> ApprovalRecord:
     """
     Return the latest human approval decision for a ticket.
 
-    Current implementation uses a local JSON-backed approval store.
-    Durable storage will be added in a later step.
+    Current implementation uses a SQLite-backed approval store.
+    Durable LangGraph checkpointing will be added in a later step.
     """
     record = get_approval_record(ticket_id)
     if record is None:
@@ -155,8 +155,8 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
     """
     Resume a high-risk workflow from the latest approval decision.
 
-    Current implementation uses the local JSON-backed approval store and a safe resume graph.
-    It does not execute any real write action.
+    Current implementation uses the SQLite-backed approval store and a safe resume graph.
+    It executes only a simulated approved write action with idempotency protection.
     """
     record = get_approval_record(ticket_id)
     if record is None:
