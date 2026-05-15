@@ -18,6 +18,8 @@ Implemented:
 - LLM structured-output classifier path using OpenAI
 - Deterministic routing after classification
 - Risk-aware high-risk review path
+- API-level human approval simulation with safe resume behavior
+- HITL design documentation in `docs/hitl_design.md`
 - Workflow path tracking
 - Structured trace events
 - Local evaluation runner
@@ -157,6 +159,18 @@ Important production concepts still planned:
 - persistent approval store
 - real tool execution boundaries
   
+
+---
+
+## Design Documentation
+
+Additional design notes are available in:
+
+```text
+docs/hitl_design.md
+```
+
+This document explains the current API-level HITL simulation, the approval-state model, the safe resume behavior, current limitations, and the future target design for durable LangGraph checkpoint-based approval workflows.
 
 ---
 
@@ -331,6 +345,9 @@ support_ticket_triage_agent_v2/
 │   ├── __init__.py
 │   ├── run_eval.py
 │   └── test_cases.json
+│
+├── docs/
+│   └── hitl_design.md
 │
 ├── tests/
 │   ├── __init__.py
