@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.action_store import clear_action_store
 from app.api import app
 from app.approval_store import clear_approval_store
 
@@ -8,6 +9,7 @@ client = TestClient(app)
 
 def setup_function():
     clear_approval_store()
+    clear_action_store()
 
 
 def test_health_check_returns_ok():
@@ -205,10 +207,12 @@ def test_resume_endpoint_routes_approved_decision():
     assert body["workflow_path"] == [
         "approval_resume_entry_node",
         "approval_approved_node",
+        "execute_approved_action_node",
     ]
-    assert body["trace_events_count"] == 1
+    assert body["trace_events_count"] == 2
+    assert body["tool_results_count"] == 1
     assert body["errors"] == []
-    assert "ready to continue" in body["final_response"]
+    assert "simulated successfully" in body["final_response"]
 
 
 def test_resume_endpoint_routes_rejected_decision():

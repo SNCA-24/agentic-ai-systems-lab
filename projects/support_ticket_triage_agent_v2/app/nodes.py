@@ -5,11 +5,13 @@ from openai import OpenAI
 from app.config import CLASSIFIER_MODE, OPENAI_MODEL
 from app.schemas import TicketClassification
 from app.state import AgentState, TraceEvent
+from app.action_store import build_idempotency_key
 from app.tools import (
     get_technical_diagnostics,
     lookup_billing_record,
     preview_high_risk_action,
 )
+from app.write_tools import execute_approved_high_risk_action
 
 
 client = OpenAI()
@@ -442,7 +444,7 @@ def approval_approved_node(state: AgentState) -> dict:
             state["trace_events"],
             node="approval_approved_node",
             event_type="approval_resume_approved",
-            message="Approval decision was approved. Workflow is ready for the approved action path.",
+            message="Approval decision was approved. Workflow will continue to approved action execution.",
             metadata={
                 "ticket_id": state["ticket_id"],
                 "approval_status": "approved",
@@ -452,9 +454,61 @@ def approval_approved_node(state: AgentState) -> dict:
         ),
         "final_response": (
             "Human approval was recorded as approved. "
-            "The workflow is ready to continue to the approved action path. "
-            "No write action has been executed in this version."
+            "The workflow will continue to the approved action execution path."
         ),
+    }
+
+
+def execute_approved_action_node(state: AgentState) -> dict:
+    action_type = "simulated_high_risk_action"
+    approval_id = state["approval_id"] or "missing_approval_id"
+    idempotency_key = build_idempotency_key(
+        ticket_id=state["ticket_id"],
+        approval_id=approval_id,
+        action_type=action_type,
+    )
+
+    tool_result = execute_approved_high_risk_action(
+        ticket_id=state["ticket_id"],
+        approval_id=approval_id,
+        approved_by=state["approved_by"],
+        idempotency_key=idempotency_key,
+        action_type=action_type,
+    )
+
+    if tool_result.status == "success":
+        final_response = (
+            "Approved high-risk action was simulated successfully. "
+            "The action execution was recorded with an idempotency key."
+        )
+    else:
+        final_response = (
+            "Approved high-risk action was not executed again because the idempotency key "
+            "was already used. Returning the previously recorded execution result."
+        )
+
+    return {
+        "workflow_path": state["workflow_path"] + ["execute_approved_action_node"],
+        "tool_results": state["tool_results"] + [tool_result.model_dump()],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="execute_approved_action_node",
+            event_type="approved_write_tool_completed",
+            message="Approved write-tool simulation completed with idempotency protection.",
+            metadata={
+                "ticket_id": state["ticket_id"],
+                "approval_status": state["approval_status"],
+                "approval_id": state["approval_id"],
+                "approved_by": state["approved_by"],
+                "tool_name": tool_result.tool_name,
+                "tool_status": tool_result.status,
+                "idempotency_key": idempotency_key,
+                "write_action_executed": tool_result.result.get("write_action_executed"),
+                "duplicate_prevented": tool_result.result.get("duplicate_prevented"),
+                "tool_type": tool_result.result.get("tool_type"),
+            },
+        ),
+        "final_response": final_response,
     }
 
 

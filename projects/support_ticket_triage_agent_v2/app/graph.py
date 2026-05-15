@@ -10,6 +10,7 @@ from app.nodes import (
     high_risk_review_node,
     error_node,
     approval_approved_node,
+    execute_approved_action_node,
     approval_rejected_node,
     approval_blocked_node,
 )
@@ -97,6 +98,7 @@ approval_resume_builder = StateGraph(AgentState)
 
 approval_resume_builder.add_node("approval_resume_entry_node", approval_resume_entry_node)
 approval_resume_builder.add_node("approval_approved_node", approval_approved_node)
+approval_resume_builder.add_node("execute_approved_action_node", execute_approved_action_node)
 approval_resume_builder.add_node("approval_rejected_node", approval_rejected_node)
 approval_resume_builder.add_node("approval_blocked_node", approval_blocked_node)
 
@@ -112,7 +114,8 @@ approval_resume_builder.add_conditional_edges(
     },
 )
 
-approval_resume_builder.add_edge("approval_approved_node", END)
+approval_resume_builder.add_edge("approval_approved_node", "execute_approved_action_node")
+approval_resume_builder.add_edge("execute_approved_action_node", END)
 approval_resume_builder.add_edge("approval_rejected_node", END)
 approval_resume_builder.add_edge("approval_blocked_node", END)
 

@@ -1,5 +1,10 @@
+from app.action_store import clear_action_store
 from app.graph import approval_resume_graph, ticket_graph
 from app.state import AgentState
+
+
+def setup_function():
+    clear_action_store()
 
 
 def run_graph(message: str, ticket_id: str = "TEST-ROUTE-001") -> AgentState:
@@ -46,6 +51,7 @@ def run_approval_resume_graph(
         "approved_by": approved_by,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }
@@ -135,9 +141,14 @@ def test_approval_resume_routes_approved_decision_to_approved_node():
     assert result["workflow_path"] == [
         "approval_resume_entry_node",
         "approval_approved_node",
+        "execute_approved_action_node",
     ]
-    assert result["trace_events"][-1]["event_type"] == "approval_resume_approved"
-    assert "ready to continue" in result["final_response"]
+    assert result["trace_events"][-1]["event_type"] == "approved_write_tool_completed"
+    assert result["tool_results"][-1]["tool_name"] == "execute_approved_high_risk_action"
+    assert result["tool_results"][-1]["status"] == "success"
+    assert result["tool_results"][-1]["result"]["write_action_executed"] is True
+    assert result["tool_results"][-1]["result"]["duplicate_prevented"] is False
+    assert "simulated successfully" in result["final_response"]
     assert result["errors"] == []
 
 
