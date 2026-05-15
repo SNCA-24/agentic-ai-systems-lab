@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
-from app.action_store import clear_action_store
 from app.api import app
-from app.approval_store import clear_approval_store
+from app.sqlite_action_store import clear_action_store
+from app.sqlite_approval_store import clear_approval_store
 
 client = TestClient(app)
 
@@ -295,3 +295,156 @@ def test_resume_endpoint_returns_404_when_approval_missing():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Cannot resume ticket_id=UNKNOWN because no approval decision was found."
+
+
+def test_checkpointed_triage_endpoint_routes_billing_ticket():
+    response = client.post(
+        "/tickets/triage/checkpointed",
+        json={
+            "ticket_id": "CHECKPOINT-API-001",
+            "user_message": "I was charged twice for my subscription.",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["thread_id"] == "support-ticket:CHECKPOINT-API-001"
+    assert body["ticket_id"] == "CHECKPOINT-API-001"
+    assert body["category"] == "billing"
+    assert body["risk_level"] == "medium"
+    assert body["needs_human_review"] is False
+    assert body["approval_status"] == "not_required"
+    assert body["workflow_path"] == [
+        "validate_input",
+        "classify_ticket",
+        "billing_node",
+    ]
+    assert body["trace_events_count"] == 3
+    assert body["tool_results_count"] == 1
+
+
+def test_checkpointed_triage_endpoint_routes_high_risk_ticket():
+    response = client.post(
+        "/tickets/triage/checkpointed",
+        json={
+            "ticket_id": "CHECKPOINT-API-002",
+            "user_message": "Our admin deleted 80 users. Can you restore them immediately?",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["thread_id"] == "support-ticket:CHECKPOINT-API-002"
+    assert body["ticket_id"] == "CHECKPOINT-API-002"
+    assert body["category"] == "technical"
+    assert body["risk_level"] == "high"
+    assert body["needs_human_review"] is True
+    assert body["approval_status"] == "pending"
+    assert body["workflow_path"] == [
+        "validate_input",
+        "classify_ticket",
+        "high_risk_review_node",
+    ]
+    assert body["trace_events_count"] == 3
+    assert body["tool_results_count"] == 1
+    assert "pending human approval" in body["final_response"]
+
+
+def test_checkpointed_resume_endpoint_routes_approved_decision():
+    approval_response = client.post(
+        "/tickets/CHECKPOINT-API-003/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_checkpoint_api_003",
+            "approved_by": "manager_checkpoint_api",
+            "approval_notes": "Approved for checkpointed resume test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    resume_response = client.post("/tickets/CHECKPOINT-API-003/resume/checkpointed")
+
+    assert resume_response.status_code == 200
+    body = resume_response.json()
+    assert body["thread_id"] == "support-ticket:CHECKPOINT-API-003"
+    assert body["ticket_id"] == "CHECKPOINT-API-003"
+    assert body["approval_status"] == "approved"
+    assert body["approval_id"] == "approval_checkpoint_api_003"
+    assert body["approved_by"] == "manager_checkpoint_api"
+    assert body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_approved_node",
+        "execute_approved_action_node",
+    ]
+    assert body["trace_events_count"] == 2
+    assert body["tool_results_count"] == 1
+    assert body["last_tool_result"]["tool_name"] == "execute_approved_high_risk_action"
+    assert body["last_tool_result"]["status"] == "success"
+    assert body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert body["last_tool_result"]["result"]["duplicate_prevented"] is False
+
+
+def test_checkpointed_resume_endpoint_is_idempotent_for_approved_action():
+    approval_response = client.post(
+        "/tickets/CHECKPOINT-API-004/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_checkpoint_api_004",
+            "approved_by": "manager_checkpoint_api",
+            "approval_notes": "Approved for checkpointed idempotency test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    first_resume_response = client.post("/tickets/CHECKPOINT-API-004/resume/checkpointed")
+    second_resume_response = client.post("/tickets/CHECKPOINT-API-004/resume/checkpointed")
+
+    assert first_resume_response.status_code == 200
+    first_body = first_resume_response.json()
+    assert first_body["thread_id"] == "support-ticket:CHECKPOINT-API-004"
+    assert first_body["last_tool_result"]["status"] == "success"
+    assert first_body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert first_body["last_tool_result"]["result"]["duplicate_prevented"] is False
+
+    assert second_resume_response.status_code == 200
+    second_body = second_resume_response.json()
+    assert second_body["thread_id"] == "support-ticket:CHECKPOINT-API-004"
+    assert second_body["last_tool_result"]["status"] == "skipped"
+    assert second_body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert second_body["last_tool_result"]["result"]["duplicate_prevented"] is True
+    assert second_body["last_tool_result"]["result"]["skip_reason"] == "idempotency_key_already_executed"
+
+
+def test_checkpointed_resume_endpoint_routes_rejected_decision():
+    approval_response = client.post(
+        "/tickets/CHECKPOINT-API-005/approval",
+        json={
+            "approved": False,
+            "approved_by": "manager_checkpoint_api",
+            "approval_notes": "Rejected for checkpointed resume test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    resume_response = client.post("/tickets/CHECKPOINT-API-005/resume/checkpointed")
+
+    assert resume_response.status_code == 200
+    body = resume_response.json()
+    assert body["thread_id"] == "support-ticket:CHECKPOINT-API-005"
+    assert body["ticket_id"] == "CHECKPOINT-API-005"
+    assert body["approval_status"] == "rejected"
+    assert body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_rejected_node",
+    ]
+    assert body["trace_events_count"] == 1
+    assert body["tool_results_count"] == 0
+    assert body["last_tool_result"] is None
+    assert "blocked" in body["final_response"]
+
+
+def test_checkpointed_resume_endpoint_returns_404_when_approval_missing():
+    response = client.post("/tickets/CHECKPOINT-UNKNOWN/resume/checkpointed")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Cannot resume ticket_id=CHECKPOINT-UNKNOWN because no approval decision was found."

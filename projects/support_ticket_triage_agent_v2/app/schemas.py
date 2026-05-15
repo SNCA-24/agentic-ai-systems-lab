@@ -36,6 +36,10 @@ class TriageResponse(BaseModel):
     errors: list[str]
 
 
+class CheckpointedTriageResponse(TriageResponse):
+    thread_id: str
+
+
 class ApprovalRequest(BaseModel):
     approved: bool = Field(description="Whether the human reviewer approved the pending high-risk action.")
     approval_id: str | None = Field(
@@ -81,3 +85,7 @@ class ResumeResponse(BaseModel):
     last_tool_result: dict | None
     final_response: str | None
     errors: list[str]
+
+
+class CheckpointedResumeResponse(ResumeResponse):
+    thread_id: str
