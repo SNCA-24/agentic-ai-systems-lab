@@ -271,16 +271,16 @@ OPENAI_API_KEY=dummy-ci-key
 
 Project 1 can be considered complete when:
 
-- [ ] `make check` passes locally
-- [ ] `make demo-interrupt` works
-- [ ] `make demo-api` works with API running
-- [ ] Docker build succeeds
-- [ ] Docker `/health` check returns `environment=docker`
-- [ ] GitHub Actions passes
-- [ ] no `.env`, `.venv`, cache, or database files are committed
-- [ ] README, root README, HITL docs, and architecture docs are consistent
-- [ ] known limitations are clearly documented
-- [ ] final commit is pushed
+- [x] `make check` passes locally
+- [x] `make demo-interrupt` works
+- [x] `make demo-api` works with API running
+- [x] Docker build succeeds
+- [x] Docker `/health` check returns `environment=docker`
+- [x] GitHub Actions passes
+- [x] no `.env`, `.venv`, cache, or database files are committed
+- [x] README, root README, HITL docs, and architecture docs are consistent
+- [x] known limitations are clearly documented
+- [x] final commit is pushed
 
 ---
 
