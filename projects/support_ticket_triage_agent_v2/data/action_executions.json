@@ -1,14 +1,1 @@
-{
-  "TICKET-003:APPROVAL-003:restore_deleted_users": {
-    "action_type": "restore_deleted_users",
-    "approval_id": "APPROVAL-003",
-    "approved_by": "manager_003",
-    "duplicate_prevented": false,
-    "execution_summary": "Approved high-risk action was simulated exactly once.",
-    "idempotency_key": "TICKET-003:APPROVAL-003:restore_deleted_users",
-    "side_effect": "simulated_only",
-    "ticket_id": "TICKET-003",
-    "tool_type": "approved_write_simulation",
-    "write_action_executed": true
-  }
-}
+{}
