@@ -1,24 +1,40 @@
 # Human-in-the-Loop Approval Design
 
-This document explains the current human-in-the-loop approval design for `support_ticket_triage_agent_v2` and how it should evolve toward a production-grade durable approval workflow.
+This document explains the human-in-the-loop approval design for `support_ticket_triage_agent_v2`.
+
+The project started as a safe API-level approval simulation and has now evolved into a production-style HITL learning system with:
+
+- risk-aware graph routing
+- approval-state tracking
+- simulated read-only and preview-only tools
+- approved simulated write-tool execution
+- idempotency protection
+- SQLite-backed persistence
+- checkpointed graph variants
+- true LangGraph `interrupt()` / `Command(resume=...)` pause/resume experiment
+
+The implementation remains intentionally conservative: no real external write action is executed.
 
 ---
 
 ## Current Purpose
 
-The project handles high-risk support tickets safely by separating three concerns:
+The project handles high-risk support tickets safely by separating these concerns:
 
 ```text
 classification
 → risk-aware routing
-→ human approval simulation
-→ safe resume response
+→ preview-only action review
+→ human approval
+→ approved simulated write-tool execution
+→ idempotency-protected action record
+→ audit-friendly response
 ```
 
-The current implementation is intentionally conservative:
+Core safety rule:
 
 ```text
-No high-risk write action is executed automatically.
+No high-risk write action can run unless approval is explicit.
 ```
 
 Examples of high-risk tickets:
@@ -33,59 +49,315 @@ Examples of high-risk tickets:
 
 ---
 
-## Current Implemented HITL Flow
+## Milestone Summary
 
-The current flow is API-level and simulation-based, with approval decisions persisted in a local JSON-backed approval store.
+### Milestone A — Approved Simulated Write-Tool Execution
+
+Milestone A added the approved action execution path.
+
+Before Milestone A:
 
 ```text
-1. POST /tickets/triage
-   → ticket is classified
-   → high-risk request routes to high_risk_review_node
-   → preview_high_risk_action tool generates a preview-only action review
-   → approval_status = pending
-   → no write action is executed
-
-2. POST /tickets/{ticket_id}/approval
-   → human approval/rejection is recorded
-   → approval is stored in a local JSON-backed approval store
-
-3. GET /tickets/{ticket_id}/approval
-   → latest approval decision is returned
-
-4. POST /tickets/{ticket_id}/resume
-   → approval decision is loaded
-   → approved decision routes to approval_approved_node
-   → rejected decision routes to approval_rejected_node
-   → missing/pending/expired decision is safely blocked
+approval recorded
+→ resume safely
+→ no action execution
 ```
-The current approval records are persisted to:
+
+After Milestone A:
 
 ```text
-data/approvals.json
+approval recorded
+→ resume safely
+→ execute approved simulated write tool
+→ store action execution record
+→ prevent duplicate execution with idempotency
+```
+
+Key additions:
+
+- `app/write_tools.py`
+- `app/action_store.py` as the original JSON-backed reference store
+- `data/action_executions.json` as the original local JSON action-execution record store
+- `execute_approved_action_node`
+- `execute_approved_high_risk_action`
+- idempotency key generation
+- API-level idempotency tests
+
+Approved resume path:
+
+```text
+approval_resume_entry_node
+→ approval_approved_node
+→ execute_approved_action_node
+→ END
+```
+
+Rejected resume path:
+
+```text
+approval_resume_entry_node
+→ approval_rejected_node
+→ END
+```
+
+The approved write tool is still simulated. It records:
+
+```json
+{
+  "tool_name": "execute_approved_high_risk_action",
+  "tool_type": "approved_write_simulation",
+  "write_action_executed": true,
+  "side_effect": "simulated_only",
+  "duplicate_prevented": false
+}
+```
+
+Repeated resume calls with the same idempotency key return:
+
+```json
+{
+  "status": "skipped",
+  "duplicate_prevented": true,
+  "skip_reason": "idempotency_key_already_executed"
+}
 ```
 
 ---
 
-## Current Boundary
+### Milestone B — SQLite-Backed Persistence
 
-The current implementation is **not durable checkpointing yet**.
+Milestone B replaced the active runtime persistence layer with SQLite.
 
-It is best described as:
+Current active runtime store:
 
 ```text
-API-level HITL simulation with safe approval resume behavior.
+data/support_agent.db
 ```
 
-Current limitations:
+The generated SQLite database is ignored by Git and created automatically by `app/db.py`.
 
-- approval store is local JSON-backed, not database-backed
-- approval decisions survive API process restarts, but are still local-file based
-- no persistent LangGraph checkpoint resume yet
-- no real write tool execution yet; current tools are read-only or preview-only simulations
-- no approval expiration enforcement beyond state/status handling
-- no identity/authorization verification for approvers yet
+Current tables:
 
-This is acceptable for the current learning milestone because the system demonstrates the safety pattern without performing real side effects.
+```text
+approval_records
+action_execution_records
+```
+
+Key additions:
+
+- `app/db.py`
+- `app/sqlite_approval_store.py`
+- `app/sqlite_action_store.py`
+- `tests/test_sqlite_approval_store.py`
+- `tests/test_sqlite_action_store.py`
+
+Current runtime behavior:
+
+```text
+approval decisions       → stored in SQLite approval_records
+action execution records → stored in SQLite action_execution_records
+```
+
+The earlier JSON-backed stores remain as reference/local-simple implementations:
+
+```text
+app/approval_store.py
+app/action_store.py
+data/approvals.json
+data/action_executions.json
+```
+
+They are no longer the active runtime persistence layer.
+
+---
+
+### Milestone C — Checkpointing and True Interrupt-Style HITL
+
+Milestone C completed the transition from simple API-level resume simulation toward real graph-orchestration HITL patterns.
+
+Milestone C was completed in three stages.
+
+#### C.1 — Checkpointing Helpers
+
+Added:
+
+- `app/checkpointing.py`
+- `create_memory_checkpointer()`
+- `build_thread_id(ticket_id)`
+- `build_graph_config(thread_id)`
+
+Thread IDs follow this format:
+
+```text
+support-ticket:<ticket_id>
+```
+
+Example:
+
+```text
+support-ticket:HITL-001
+```
+
+#### C.2 — Checkpointed Graph Variants and API Endpoints
+
+Added checkpoint-enabled graph variants:
+
+```text
+checkpointed_ticket_graph
+checkpointed_approval_resume_graph
+```
+
+Added checkpointed API endpoints:
+
+```text
+POST /tickets/triage/checkpointed
+POST /tickets/{ticket_id}/resume/checkpointed
+```
+
+These expose `thread_id` in the API response and run through checkpoint-enabled graph variants.
+
+This step proved that graph runs can be associated with stable `thread_id` values.
+
+#### C.3 — True Interrupt-Style HITL Experiment
+
+Added the actual interrupt-style graph experiment:
+
+```text
+interruptible_ticket_graph
+human_approval_interrupt_node
+```
+
+The interrupt node uses:
+
+```python
+from langgraph.types import interrupt, Command
+```
+
+High-risk interruptible flow:
+
+```text
+validate_input
+→ classify_ticket
+→ high_risk_review_node
+→ human_approval_interrupt_node
+→ interrupt(...)
+```
+
+The graph pauses and returns an approval request payload.
+
+Approved resume:
+
+```text
+Command(resume={"approved": true, ...})
+→ human_approval_interrupt_node
+→ approval_approved_node
+→ execute_approved_action_node
+→ END
+```
+
+Rejected resume:
+
+```text
+Command(resume={"approved": false, ...})
+→ human_approval_interrupt_node
+→ approval_rejected_node
+→ END
+```
+
+This is the strongest HITL pattern in the project because the same graph thread pauses and later resumes using `Command(resume=...)`.
+
+---
+
+## Current Implemented HITL Flows
+
+The project now supports three HITL-related execution styles.
+
+### 1. Stable API-Level Resume Flow
+
+This is the original production-safe API path.
+
+```text
+POST /tickets/triage
+→ high-risk ticket routes to high_risk_review_node
+→ preview_high_risk_action generates preview-only action review
+→ approval_status = pending
+→ no write action executed
+
+POST /tickets/{ticket_id}/approval
+→ approval/rejection stored in SQLite
+
+POST /tickets/{ticket_id}/resume
+→ approval decision loaded from SQLite
+→ approved decision executes simulated write tool once
+→ repeated resume is idempotency-protected
+→ rejected decision blocks safely
+```
+
+### 2. Checkpointed API Flow
+
+This is a checkpoint-enabled API path that exposes `thread_id`.
+
+```text
+POST /tickets/triage/checkpointed
+→ runs checkpointed_ticket_graph
+→ returns thread_id
+
+POST /tickets/{ticket_id}/resume/checkpointed
+→ runs checkpointed_approval_resume_graph
+→ returns thread_id
+```
+
+This path is useful for showing how LangGraph checkpointer configuration and thread IDs work.
+
+### 3. Interruptible Graph Experiment
+
+This is the true pause/resume experiment.
+
+```text
+interruptible_ticket_graph.invoke(initial_state, config={"configurable": {"thread_id": ...}})
+→ high-risk request reaches human_approval_interrupt_node
+→ graph pauses with interrupt(...)
+
+interruptible_ticket_graph.invoke(Command(resume={...}), config=same_config)
+→ same graph thread resumes
+→ approved path executes simulated write tool
+→ rejected path blocks safely
+```
+
+This is currently tested at the graph level, not exposed as a public API endpoint.
+
+---
+
+## Current Persistence Design
+
+Active runtime persistence is SQLite-backed.
+
+```text
+data/support_agent.db
+```
+
+Tables:
+
+| Table | Purpose |
+|---|---|
+| `approval_records` | Stores latest approval/rejection decision per ticket |
+| `action_execution_records` | Stores idempotency-protected approved action execution records |
+
+SQLite store modules:
+
+```text
+app/sqlite_approval_store.py
+app/sqlite_action_store.py
+```
+
+Reference JSON store modules:
+
+```text
+app/approval_store.py
+app/action_store.py
+```
+
+The JSON implementations are kept as simple reference versions but are not active runtime stores.
 
 ---
 
@@ -122,158 +394,94 @@ Meaning:
 
 ---
 
-## Current Safety Rule
+## Tool Layer
 
-High-risk requests must not execute write actions directly.
+The project includes a simulated tool layer for safe enterprise-style tool design.
 
-Current high-risk behavior:
-
-```text
-high-risk ticket
-→ high_risk_review_node
-→ preview_high_risk_action tool generates an action preview
-→ approval_status = pending
-→ final response explains that human approval is required
-→ no write action is executed
-```
-
-This prevents unsafe behavior like:
-
-```text
-User: Restore 80 deleted users.
-Agent: Done.
-```
-
-Correct behavior:
-
-```text
-User: Restore 80 deleted users.
-Agent: This is high-risk and requires human approval. No write action has been executed.
-```
-
----
-
-## Current Implementation Files
-
-```text
-app/api.py              → approval/resume API endpoints
-app/approval_store.py   → local JSON-backed approval persistence
-data/approvals.json     → local approval record store
-app/graph.py            → triage graph and approval resume graph
-app/nodes.py            → route nodes, high-risk review, tool-result capture, and approval resume nodes
-app/tools.py            → simulated read-only and preview-only tools
-app/state.py            → approval state fields
-tests/test_api.py       → approval and resume API tests
-```
-
----
-
-## Current Test Coverage
-
-The HITL approval flow is covered by API tests for:
-
-- approved decision recording
-- rejected decision recording
-- missing approval ID handling
-- approval retrieval
-- approved resume path
-- rejected resume path
-- missing approval resume failure
-
----
-
-## Current Tool Layer
-
-The project now includes a simulated tool layer for safe enterprise-style tool design.
-
-Current tools:
+Current pre-approval tools:
 
 | Tool | Type | Used By | Purpose |
 |---|---|---|---|
-| `lookup_billing_record` | read-only | `billing_node` | Returns mock billing evidence for duplicate-charge or billing tickets |
-| `get_technical_diagnostics` | read-only | `technical_node` | Returns a mock diagnostics checklist for technical tickets |
-| `preview_high_risk_action` | preview-only | `high_risk_review_node` | Generates a high-risk action preview without executing any write action |
+| `lookup_billing_record` | read-only | `billing_node` | Returns mock billing evidence for billing/duplicate-charge tickets |
+| `get_technical_diagnostics` | read-only | `technical_node` | Returns mock diagnostics checklist for technical tickets |
+| `preview_high_risk_action` | preview-only | `high_risk_review_node` | Generates high-risk action preview without executing any write action |
 
-The important boundary is:
+Current approved-action tool:
+
+| Tool | Type | Used By | Purpose |
+|---|---|---|---|
+| `execute_approved_high_risk_action` | approved write simulation | `execute_approved_action_node` | Simulates approved high-risk action execution with idempotency protection |
+
+Tool safety boundary:
 
 ```text
 read-only tools may run automatically
 preview-only tools may run before approval
-write tools must not run without explicit approval
+approved write simulations may run only after approval
+real write tools are intentionally out of scope
 ```
 
-Tool outputs are stored in graph state as `tool_results`.
+Tool outputs are stored in graph state as:
 
-For high-risk tickets, the preview tool records:
-
-```json
-{
-  "tool_name": "preview_high_risk_action",
-  "tool_type": "preview_only",
-  "requires_human_approval": true,
-  "write_action_executed": false,
-  "side_effect": "none"
-}
+```text
+tool_results
 ```
-
-This gives reviewers useful context while preserving the safety rule that approval does not automatically execute an action.
 
 ---
 
-## Resume Behavior
+## Idempotency Design
 
-This resume flow is a safe API-level resume simulation. It does not yet resume a paused LangGraph checkpoint from the original triage run.
+Idempotency prevents repeated resume calls from duplicating approved write actions.
 
-The resume endpoint currently converts stored approval decisions into a safe response path.
-
-Approved decision:
+Idempotency key format:
 
 ```text
-POST /tickets/{ticket_id}/resume
-→ approval_resume_entry_node
-→ approval_approved_node
-→ safe response saying approval was recorded
-→ no write action executed
+<ticket_id>:<approval_id>:<action_type>
 ```
 
-Rejected decision:
+Example:
 
 ```text
-POST /tickets/{ticket_id}/resume
-→ approval_resume_entry_node
-→ approval_rejected_node
-→ safe blocked response
+HITL-001:approval_123:simulated_high_risk_action
 ```
 
-Missing/pending/expired decision:
+Execution behavior:
 
 ```text
-POST /tickets/{ticket_id}/resume
-→ safe blocked response
+first approved resume
+→ idempotency key not found
+→ simulated write action executes
+→ execution record stored
+
+second approved resume with same approval/action
+→ idempotency key already exists
+→ execution is skipped
+→ previous execution result is returned
 ```
+
+This demonstrates the production pattern used to prevent duplicate refunds, duplicate account restores, repeated permission grants, or other repeated side effects.
 
 ---
 
 ## Current API Endpoints
 
-### Triage ticket
+### Standard triage
 
 ```text
 POST /tickets/triage
 ```
 
-Classifies the ticket and routes it through the graph.
+Classifies and routes a ticket through the stable non-checkpointed triage graph.
 
-High-risk result should include:
+---
 
-```json
-{
-  "risk_level": "high",
-  "needs_human_review": true,
-  "approval_status": "pending",
-  "workflow_path": ["validate_input", "classify_ticket", "high_risk_review_node"]
-}
+### Checkpointed triage
+
+```text
+POST /tickets/triage/checkpointed
 ```
+
+Runs the checkpoint-enabled triage graph and returns a `thread_id`.
 
 ---
 
@@ -283,7 +491,7 @@ High-risk result should include:
 POST /tickets/{ticket_id}/approval
 ```
 
-Records approval/rejection in the local JSON-backed approval store.
+Records an approval or rejection in SQLite.
 
 Example request:
 
@@ -304,17 +512,110 @@ Example request:
 GET /tickets/{ticket_id}/approval
 ```
 
-Returns the latest approval decision for the ticket.
+Returns the latest approval decision for the ticket from SQLite.
 
 ---
 
-### Resume workflow
+### Standard resume
 
 ```text
 POST /tickets/{ticket_id}/resume
 ```
 
-Uses the latest approval decision to route into a safe resume graph.
+Loads approval from SQLite and runs the stable approval resume graph.
+
+Approved response includes:
+
+```text
+workflow_path:
+approval_resume_entry_node
+→ approval_approved_node
+→ execute_approved_action_node
+```
+
+---
+
+### Checkpointed resume
+
+```text
+POST /tickets/{ticket_id}/resume/checkpointed
+```
+
+Loads approval from SQLite and runs the checkpoint-enabled approval resume graph.
+
+Returns:
+
+```text
+thread_id
+workflow_path
+last_tool_result
+tool_results_count
+trace_events_count
+```
+
+---
+
+## Current Implementation Files
+
+```text
+app/api.py                    → FastAPI endpoints for triage, approval, resume, checkpointed flows
+app/db.py                     → SQLite database initialization
+app/sqlite_approval_store.py  → active SQLite-backed approval persistence
+app/sqlite_action_store.py    → active SQLite-backed action execution persistence
+app/approval_store.py         → legacy/reference JSON-backed approval store
+app/action_store.py           → legacy/reference JSON-backed action execution store
+app/graph.py                  → normal, checkpointed, and interruptible graph definitions
+app/nodes.py                  → routing, approval, interrupt, and execution nodes
+app/tools.py                  → simulated read-only and preview-only tools
+app/write_tools.py            → approved simulated write tool with idempotency
+app/checkpointing.py          → checkpointer, thread_id, graph config helpers
+app/state.py                  → graph state fields
+app/schemas.py                → request/response schemas
+```
+
+Relevant tests:
+
+```text
+tests/test_api.py                    → API-level triage, approval, resume, checkpointed endpoint tests
+tests/test_routing.py                → graph routing and approval resume tests
+tests/test_trace_events.py           → trace event tests
+tests/test_tools.py                  → read-only and preview-only tool tests
+tests/test_write_tools.py            → approved write-tool and idempotency tests
+tests/test_sqlite_approval_store.py  → SQLite approval persistence tests
+tests/test_sqlite_action_store.py    → SQLite action persistence tests
+tests/test_checkpointing.py          → checkpoint helper and checkpointed graph tests
+tests/test_interruptible_graph.py    → true interrupt()/Command(resume=...) tests
+```
+
+---
+
+## Current Test Coverage
+
+The current test suite covers:
+
+- mock classifier behavior
+- deterministic routing behavior
+- high-risk routing
+- trace events
+- read-only tools
+- preview-only high-risk action tool
+- approved simulated write tool
+- idempotency behavior
+- SQLite approval persistence
+- SQLite action execution persistence
+- standard approval API flow
+- checkpointed API flow
+- checkpointing helper utilities
+- checkpointed graph variants
+- true interrupt-style HITL graph pause/resume
+- rejected approval blocking behavior
+
+Current expected local verification:
+
+```text
+pytest: 70/70 passed
+python -m evals.run_eval: 5/5 passed
+```
 
 ---
 
@@ -328,48 +629,64 @@ Code routes.
 High-risk actions are isolated.
 Tool outputs are captured as structured evidence.
 Read-only and preview-only tools are separated from write tools.
-Human approval is represented explicitly in state.
-Approval decisions are auditable.
-Resume behavior is safe by default.
-No write action executes without approval.
+Approval changes authorization state.
+Approved action execution is idempotency-protected.
+SQLite persists approvals and action execution records.
+Checkpointed graphs use thread_id-based configuration.
+LangGraph interrupt() can pause for human approval.
+Command(resume=...) can resume the same graph thread.
+Rejected approvals block safely.
 ```
 
 ---
 
-## Production Target Design
+## Current Boundaries and Limitations
 
-The future production-grade version should use durable graph checkpointing.
+The project is production-style, but still intentionally local and simulated.
 
-Target flow:
+Current boundaries:
+
+- write execution is simulated, not connected to a real CRM/billing/admin system
+- SQLite is local, not a production Postgres/MySQL deployment
+- `MemorySaver` checkpointing is local/in-memory, not durable across process restarts
+- interruptible graph is tested at graph level, not exposed as a public API endpoint
+- no real identity verification for approvers yet
+- no role-based authorization for approval decisions yet
+- no expiration policy for approval windows yet
+- no distributed locking or concurrent worker coordination yet
+
+---
+
+## Future Production Target Design
+
+A production-grade version would evolve toward:
 
 ```text
 high-risk graph node
+→ preview-only action tool
 → LangGraph interrupt/checkpoint
-→ user or manager approval captured externally
-→ graph resumes using thread_id
-→ approval_id is verified
-→ action preview is generated using a preview-only tool
-→ write tool executes only if approved and idempotency is configured
-→ idempotency key prevents duplicate execution
-→ audit log persists the decision trail
+→ approval captured from authorized reviewer
+→ approval identity and permission verified
+→ graph resumes using durable thread_id
+→ approved write tool executes with idempotency key
+→ execution result stored in durable database
+→ audit trail persists approval + execution record
+→ monitoring/evaluation tracks regressions
 ```
 
----
+Additional future production requirements:
 
-## Production Requirements Still Needed
-
-Before real write tools are introduced, the system should add:
-
-- durable checkpointing
-- database-backed approval store
+- durable checkpoint store beyond `MemorySaver`
+- database migrations
+- Postgres-backed persistence
+- approver identity verification
 - approval expiration timestamps
-- approval identity verification
-- permission checks for approvers
-- idempotency keys for write tools
-- promotion path from preview-only tools to approved write tools
-- durable audit logs
+- role-based permission checks
+- audit log tables
+- idempotency-key uniqueness guarantees at database level
 - status reconciliation after write-tool timeout
-- LangSmith dataset-based evaluation for approval paths
+- LangSmith dataset-based evaluation for HITL paths
+- deployment configuration and API auth
 
 ---
 
@@ -379,18 +696,21 @@ The most important rule for this project is:
 
 ```text
 Approval changes authorization state.
-Approval does not automatically mean immediate execution.
+Approval does not automatically mean unsafe execution.
+Execution still goes through typed tools, idempotency, persistence, and traceability.
 ```
 
 A safe production flow is:
 
 ```text
 classify
-→ verify
+→ route
 → preview
-→ approve
+→ interrupt / approve
+→ verify approval
 → execute with idempotency
+→ persist result
 → audit
 ```
 
-The current project has implemented the early approval simulation stage, local JSON-backed approval persistence, simulated read-only and preview-only tools, tool-result capture, and safe resume behavior. Real write-tool execution remains intentionally out of scope for now.
+The current project implements this pattern with simulated tools, SQLite persistence, checkpointed graphs, and a true interrupt-style graph experiment.
