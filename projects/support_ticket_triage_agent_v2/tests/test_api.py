@@ -109,7 +109,7 @@ def test_approval_endpoint_records_approved_decision():
     assert body["approval_id"] == "approval_123"
     assert body["approved_by"] == "manager_001"
     assert body["approval_notes"] == "Requester verified and action approved."
-    assert body["message"] == "Approval recorded. Workflow resume is not implemented yet."
+    assert body["message"] == "Approval recorded. Workflow can now be resumed safely."
 
 
 def test_approval_endpoint_rejects_missing_approval_id_for_approved_decision():
