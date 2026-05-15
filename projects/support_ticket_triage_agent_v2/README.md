@@ -31,7 +31,7 @@ Current eval/test status:
 
 ```text
 Passed 5/5 evals
-pytest: 18/18 passed
+pytest: 23/23 passed
 ```
 
 ---
@@ -386,7 +386,7 @@ The test suite covers:
 Current expected result:
 
 ```text
-18 passed
+23 passed
 ```
 
 ---
