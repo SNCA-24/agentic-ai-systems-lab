@@ -1,13 +1,13 @@
 from fastapi.testclient import TestClient
 
-from app.api import app, approval_store
-
+from app.api import app
+from app.approval_store import clear_approval_store
 
 client = TestClient(app)
 
 
 def setup_function():
-    approval_store.clear()
+    clear_approval_store()
 
 
 def test_health_check_returns_ok():

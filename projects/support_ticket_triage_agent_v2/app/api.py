@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
+from app.approval_store import get_approval_record, save_approval_record
 from app.graph import approval_resume_graph, ticket_graph
 from app.schemas import (
     ApprovalRecord,
@@ -18,9 +19,6 @@ app = FastAPI(
     description="Graph-orchestrated support ticket triage agent with risk-aware routing.",
     version="0.1.0",
 )
-
-
-approval_store: dict[str, ApprovalRecord] = {}
 
 
 @app.get("/health")
@@ -113,10 +111,11 @@ def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalRespons
             approval_id=request.approval_id,
             approved_by=request.approved_by,
             approval_notes=request.approval_notes,
-            message="Approval recorded. Workflow resume is not implemented yet.",
+            message="Approval recorded. Workflow can now be resumed safely.",
         )
-        approval_store[ticket_id] = record
-        return ApprovalResponse(**record.model_dump())
+
+        saved_record = save_approval_record(record)
+        return ApprovalResponse(**saved_record.model_dump())
 
     record = ApprovalRecord(
         ticket_id=ticket_id,
@@ -126,8 +125,9 @@ def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalRespons
         approval_notes=request.approval_notes,
         message="Approval rejected. No write action has been executed.",
     )
-    approval_store[ticket_id] = record
-    return ApprovalResponse(**record.model_dump())
+
+    saved_record = save_approval_record(record)
+    return ApprovalResponse(**saved_record.model_dump())
 
 
 @app.get("/tickets/{ticket_id}/approval", response_model=ApprovalRecord)
@@ -135,10 +135,10 @@ def get_approval(ticket_id: str) -> ApprovalRecord:
     """
     Return the latest human approval decision for a ticket.
 
-    Current implementation uses an in-memory development store.
+    Current implementation uses a local JSON-backed approval store.
     Durable storage will be added in a later step.
     """
-    record = approval_store.get(ticket_id)
+    record = get_approval_record(ticket_id)
     if record is None:
         raise HTTPException(
             status_code=404,
@@ -153,10 +153,10 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
     """
     Resume a high-risk workflow from the latest approval decision.
 
-    Current implementation uses the in-memory approval store and a safe resume graph.
+    Current implementation uses the local JSON-backed approval store and a safe resume graph.
     It does not execute any real write action.
     """
-    record = approval_store.get(ticket_id)
+    record = get_approval_record(ticket_id)
     if record is None:
         raise HTTPException(
             status_code=404,
