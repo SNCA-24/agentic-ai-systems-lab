@@ -37,7 +37,7 @@ Examples of high-risk tickets:
 
 ## Current Implemented HITL Flow
 
-The current flow is API-level and simulation-based.
+The current flow is API-level and simulation-based, with approval decisions persisted in a local JSON-backed approval store.
 
 ```text
 1. POST /tickets/triage
@@ -48,7 +48,7 @@ The current flow is API-level and simulation-based.
 
 2. POST /tickets/{ticket_id}/approval
    → human approval/rejection is recorded
-   → approval is stored in an in-memory approval store
+   → approval is stored in a local JSON-backed approval store
 
 3. GET /tickets/{ticket_id}/approval
    → latest approval decision is returned
@@ -59,6 +59,10 @@ The current flow is API-level and simulation-based.
    → rejected decision routes to approval_rejected_node
    → missing/pending/expired decision is safely blocked
 ```
+The current approval records are persisted to:
+
+```text
+data/approvals.json
 
 ---
 
@@ -74,8 +78,8 @@ API-level HITL simulation with safe approval resume behavior.
 
 Current limitations:
 
-- approval store is in-memory
-- approval decisions are lost when API process restarts
+- approval store is local JSON-backed, not database-backed
+- approval decisions survive API process restarts, but are still local-file based
 - no persistent LangGraph checkpoint resume yet
 - no real write tool execution yet
 - no approval expiration enforcement beyond state/status handling
@@ -145,10 +149,39 @@ Correct behavior:
 User: Restore 80 deleted users.
 Agent: This is high-risk and requires human approval. No write action has been executed.
 ```
+---
+---
+
+## Current Implementation Files
+
+```text
+app/api.py              → approval/resume API endpoints
+app/approval_store.py   → local JSON-backed approval persistence
+data/approvals.json     → local approval record store
+app/graph.py            → triage graph and approval resume graph
+app/nodes.py            → high-risk review and approval resume nodes
+app/state.py            → approval state fields
+tests/test_api.py       → approval and resume API tests
+```
+---
+
+## Current Test Coverage
+
+The HITL approval flow is covered by API tests for:
+
+- approved decision recording
+- rejected decision recording
+- missing approval ID handling
+- approval retrieval
+- approved resume path
+- rejected resume path
+- missing approval resume failure
 
 ---
 
 ## Resume Behavior
+
+This resume flow is a safe API-level resume simulation. It does not yet resume a paused LangGraph checkpoint from the original triage run.
 
 The resume endpoint currently converts stored approval decisions into a safe response path.
 
@@ -209,7 +242,7 @@ High-risk result should include:
 POST /tickets/{ticket_id}/approval
 ```
 
-Records approval/rejection in the in-memory approval store.
+Records approval/rejection in the local JSON-backed approval store.
 
 Example request:
 
@@ -285,7 +318,7 @@ high-risk graph node
 Before real write tools are introduced, the system should add:
 
 - durable checkpointing
-- persistent approval store
+- database-backed approval store
 - approval expiration timestamps
 - approval identity verification
 - permission checks for approvers
@@ -317,4 +350,4 @@ classify
 → audit
 ```
 
-The current project has implemented the early approval simulation stage and safe resume behavior. Real tool execution remains intentionally out of scope for now.
+The current project has implemented the early approval simulation stage, local JSON-backed approval persistence, and safe resume behavior. Real tool execution remains intentionally out of scope for now.
