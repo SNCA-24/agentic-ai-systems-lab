@@ -1,5 +1,4 @@
 
-
 #!/bin/zsh
 
 # Demo: checkpointed FastAPI endpoints and idempotent approved resume.
