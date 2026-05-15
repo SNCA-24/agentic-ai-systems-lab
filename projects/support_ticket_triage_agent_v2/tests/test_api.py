@@ -238,6 +238,7 @@ def test_resume_endpoint_routes_rejected_decision():
 
 
 def test_resume_endpoint_returns_404_when_approval_missing():
+    clear_approval_store()
     response = client.post("/tickets/UNKNOWN/resume")
 
     assert response.status_code == 404

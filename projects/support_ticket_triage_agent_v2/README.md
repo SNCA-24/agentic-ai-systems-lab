@@ -117,7 +117,7 @@ Current implemented flow:
    → no write action is executed
 
 2. POST /tickets/{ticket_id}/approval
-   → records approved/rejected decision in an in-memory approval store
+   → records approved/rejected decision in a local JSON-backed approval store
 
 3. GET /tickets/{ticket_id}/approval
    → retrieves the latest approval decision
@@ -156,7 +156,7 @@ Important production concepts still planned:
 - approval identity verification
 - idempotency keys for write tools
 - audit log persistence
-- persistent approval store
+- database-backed approval store
 - real tool execution boundaries
   
 
@@ -456,7 +456,7 @@ The test suite covers:
 - FastAPI health check
 - FastAPI triage endpoint behavior
 - FastAPI approval endpoint behavior
-- In-memory approval decision retrieval
+- JSON-backed approval decision retrieval
 - API-level approval resume behavior
 
 Current expected result:
@@ -543,11 +543,11 @@ Expected key fields:
   "approval_status": "approved",
   "approval_id": "approval_123",
   "approved_by": "manager_001",
-  "message": "Approval recorded. Workflow resume is not implemented yet."
+  "message": "Approval recorded. Workflow can now be resumed safely."
 }
 ```
 
-Important: this approval endpoint records a typed approval decision only. Durable graph resume and checkpointing are planned for a later step.
+Important: this approval endpoint records a typed approval decision in the local JSON-backed approval store. Durable LangGraph checkpoint resume is planned for a later step.
 
 Retrieve the latest approval decision:
 
@@ -555,7 +555,7 @@ Retrieve the latest approval decision:
 curl http://127.0.0.1:8000/tickets/CURL-002/approval
 ```
 
-Important: the current approval store is in-memory and intended for local development only. It resets when the API process restarts. A durable store/checkpointer is planned for a later step.
+Important: the current approval store is local JSON-backed and intended for local development only. Approval records persist across API process restarts in `data/approvals.json`, but a database-backed store/checkpointer is planned for a later step.
 
 Resume the workflow from the latest approval decision:
 
@@ -653,7 +653,7 @@ This version does not yet include:
 - real CRM tools
 - RAG over policy documents
 - durable human approval interrupts with persisted LangGraph checkpoint resume
-- durable approval persistence and persistent checkpointing
+- database-backed approval persistence and durable LangGraph checkpointing
 - FastAPI deployment beyond local dev
 - production auth/security
 - LangSmith dataset-based experiments
@@ -667,7 +667,7 @@ These are planned future extensions.
 1. Add durable human-in-the-loop approval resume with checkpointing
 2. Add RAG over refund/support policy documents
 3. Add tool design layer with read/write tool separation
-4. Add persistent checkpointing
+4. Add database-backed approval persistence and durable LangGraph checkpointing
 5. Add LangSmith dataset-based evaluation
 6. Add Dockerfile and deployment guide
 7. Add deployment notes for running the FastAPI service
