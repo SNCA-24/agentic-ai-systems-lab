@@ -1,6 +1,7 @@
 from typing import Any
 
 from openai import OpenAI
+from langgraph.types import interrupt
 
 from app.config import CLASSIFIER_MODE, OPENAI_MODEL
 from app.schemas import TicketClassification
@@ -433,6 +434,53 @@ def high_risk_review_node(state: AgentState) -> dict:
         "final_response": (
             "This request appears high-risk and has been marked as pending human approval. "
             "A preview-only action review was generated, and no write action has been executed."
+        ),
+    }
+
+
+# Interrupt-style human approval node for experimental HITL workflows
+def human_approval_interrupt_node(state: AgentState) -> dict:
+    """
+    True interrupt-style human approval node for experimental HITL workflows.
+
+    On the first pass, this node pauses graph execution using LangGraph interrupt().
+    On resume, the approval decision payload is returned from interrupt() and used
+    to update graph state before routing to approved/rejected/blocked nodes.
+    """
+    approval_payload = interrupt(
+        {
+            "ticket_id": state["ticket_id"],
+            "approval_status": "pending",
+            "approval_required": True,
+            "reason": "High-risk ticket requires human approval before any write action can execute.",
+            "category": state["category"],
+            "intent": state["intent"],
+            "risk_level": state["risk_level"],
+            "decision_summary": state["decision_summary"],
+            "action_preview": state["tool_results"][-1] if state["tool_results"] else None,
+        }
+    )
+
+    approved = bool(approval_payload.get("approved", False))
+    approval_status = "approved" if approved else "rejected"
+
+    return {
+        "workflow_path": state["workflow_path"] + ["human_approval_interrupt_node"],
+        "approval_status": approval_status,
+        "approval_id": approval_payload.get("approval_id"),
+        "approved_by": approval_payload.get("approved_by"),
+        "approval_notes": approval_payload.get("approval_notes"),
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="human_approval_interrupt_node",
+            event_type="human_approval_interrupt_resumed",
+            message="Interruptible workflow resumed with a human approval decision.",
+            metadata={
+                "ticket_id": state["ticket_id"],
+                "approval_status": approval_status,
+                "approval_id": approval_payload.get("approval_id"),
+                "approved_by": approval_payload.get("approved_by"),
+            },
         ),
     }
 

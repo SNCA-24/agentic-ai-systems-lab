@@ -9,6 +9,7 @@ from app.nodes import (
     technical_node,
     general_node,
     high_risk_review_node,
+    human_approval_interrupt_node,
     error_node,
     approval_approved_node,
     execute_approved_action_node,
@@ -127,5 +128,70 @@ approval_resume_builder.add_edge("approval_blocked_node", END)
 approval_resume_graph = approval_resume_builder.compile()
 
 checkpointed_approval_resume_graph = approval_resume_builder.compile(
+    checkpointer=create_memory_checkpointer(),
+)
+
+
+# Interruptible workflow with human_approval_interrupt_node
+interruptible_builder = StateGraph(AgentState)
+
+interruptible_builder.add_node("validate_input", validate_input)
+interruptible_builder.add_node("classify_ticket", classify_ticket)
+interruptible_builder.add_node("billing_node", billing_node)
+interruptible_builder.add_node("technical_node", technical_node)
+interruptible_builder.add_node("general_node", general_node)
+interruptible_builder.add_node("high_risk_review_node", high_risk_review_node)
+interruptible_builder.add_node("human_approval_interrupt_node", human_approval_interrupt_node)
+interruptible_builder.add_node("approval_approved_node", approval_approved_node)
+interruptible_builder.add_node("execute_approved_action_node", execute_approved_action_node)
+interruptible_builder.add_node("approval_rejected_node", approval_rejected_node)
+interruptible_builder.add_node("approval_blocked_node", approval_blocked_node)
+interruptible_builder.add_node("error_node", error_node)
+
+interruptible_builder.add_edge(START, "validate_input")
+
+interruptible_builder.add_conditional_edges(
+    "validate_input",
+    route_after_validation,
+    {
+        "classify": "classify_ticket",
+        "error": "error_node",
+    },
+)
+
+interruptible_builder.add_conditional_edges(
+    "classify_ticket",
+    route_after_classification,
+    {
+        "billing": "billing_node",
+        "technical": "technical_node",
+        "general": "general_node",
+        "high_risk": "high_risk_review_node",
+        "error": "error_node",
+    },
+)
+
+interruptible_builder.add_edge("high_risk_review_node", "human_approval_interrupt_node")
+
+interruptible_builder.add_conditional_edges(
+    "human_approval_interrupt_node",
+    route_after_approval_status,
+    {
+        "approved": "approval_approved_node",
+        "rejected": "approval_rejected_node",
+        "blocked": "approval_blocked_node",
+    },
+)
+
+interruptible_builder.add_edge("approval_approved_node", "execute_approved_action_node")
+interruptible_builder.add_edge("execute_approved_action_node", END)
+interruptible_builder.add_edge("approval_rejected_node", END)
+interruptible_builder.add_edge("approval_blocked_node", END)
+interruptible_builder.add_edge("billing_node", END)
+interruptible_builder.add_edge("technical_node", END)
+interruptible_builder.add_edge("general_node", END)
+interruptible_builder.add_edge("error_node", END)
+
+interruptible_ticket_graph = interruptible_builder.compile(
     checkpointer=create_memory_checkpointer(),
 )
