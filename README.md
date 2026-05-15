@@ -1,5 +1,3 @@
-
-
 # Agentic AI Systems Lab
 
 A portfolio-focused monorepo for building production-style agentic AI systems.
@@ -35,8 +33,9 @@ A LangGraph-based support ticket triage agent with:
 - FastAPI endpoints
 - GitHub Actions CI
 - API-level human approval flow
-- in-memory approval decision store
+- local JSON-backed approval decision store
 - safe approval resume graph
+- HITL design documentation
 
 Current verification status:
 
@@ -65,6 +64,10 @@ agentic-ai-systems-lab/
 ├── projects/
 │   └── support_ticket_triage_agent_v2/
 │       ├── app/
+│       ├── data/
+│       │   └── approvals.json
+│       ├── docs/
+│       │   └── hitl_design.md
 │       ├── evals/
 │       ├── tests/
 │       ├── README.md
@@ -137,8 +140,8 @@ High-risk path:
 ```text
 high-risk ticket
 → approval_status = pending
-→ human approval decision recorded
-→ approval decision can be retrieved
+→ human approval decision recorded in data/approvals.json
+→ approval decision can be retrieved after API restart
 → resume endpoint routes approved/rejected decisions safely
 → no real write action is executed yet
 ```
@@ -234,7 +237,7 @@ Planned projects:
 
 1. **Support Ticket Triage Agent v2** — graph routing, HITL foundation, FastAPI, evals, tracing
 2. **Refund Decision Agent** — RAG + policy grounding + billing tools
-3. **Human Approval Action Agent** — durable checkpointing, approval gates, idempotent write tools
+3. **Human Approval Action Agent** — database-backed approvals, durable checkpointing, approval gates, idempotent write tools
 4. **Multi-Agent Incident Investigator** — supervisor-worker orchestration across simulated systems
 5. **Enterprise AgentOps Workflow System** — tracing, eval dashboards, deployment, monitoring, and regression testing
 
@@ -251,6 +254,7 @@ This repo is designed to demonstrate skills relevant to AI Engineer, Agentic AI 
 - deterministic routing
 - human-in-the-loop workflow design
 - approval safety patterns
+- JSON-backed local approval persistence
 - FastAPI service design
 - local evaluation design
 - pytest-based test coverage
@@ -269,7 +273,7 @@ Status: active / portfolio-ready baseline
 Tests: 29/29 passing
 Evals: 5/5 passing
 CI: enabled
-Next major milestone: durable LangGraph checkpoint/resume for HITL workflows
+Next major milestone: database-backed approval persistence and durable LangGraph checkpoint/resume for HITL workflows
 ```
 
 ---
