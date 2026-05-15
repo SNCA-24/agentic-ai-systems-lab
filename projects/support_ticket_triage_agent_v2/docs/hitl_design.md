@@ -1,5 +1,3 @@
-
-
 # Human-in-the-Loop Approval Design
 
 This document explains the current human-in-the-loop approval design for `support_ticket_triage_agent_v2` and how it should evolve toward a production-grade durable approval workflow.
@@ -43,6 +41,7 @@ The current flow is API-level and simulation-based, with approval decisions pers
 1. POST /tickets/triage
    → ticket is classified
    → high-risk request routes to high_risk_review_node
+   → preview_high_risk_action tool generates a preview-only action review
    → approval_status = pending
    → no write action is executed
 
@@ -63,6 +62,7 @@ The current approval records are persisted to:
 
 ```text
 data/approvals.json
+```
 
 ---
 
@@ -81,7 +81,7 @@ Current limitations:
 - approval store is local JSON-backed, not database-backed
 - approval decisions survive API process restarts, but are still local-file based
 - no persistent LangGraph checkpoint resume yet
-- no real write tool execution yet
+- no real write tool execution yet; current tools are read-only or preview-only simulations
 - no approval expiration enforcement beyond state/status handling
 - no identity/authorization verification for approvers yet
 
@@ -131,6 +131,7 @@ Current high-risk behavior:
 ```text
 high-risk ticket
 → high_risk_review_node
+→ preview_high_risk_action tool generates an action preview
 → approval_status = pending
 → final response explains that human approval is required
 → no write action is executed
@@ -149,7 +150,7 @@ Correct behavior:
 User: Restore 80 deleted users.
 Agent: This is high-risk and requires human approval. No write action has been executed.
 ```
----
+
 ---
 
 ## Current Implementation Files
@@ -159,10 +160,12 @@ app/api.py              → approval/resume API endpoints
 app/approval_store.py   → local JSON-backed approval persistence
 data/approvals.json     → local approval record store
 app/graph.py            → triage graph and approval resume graph
-app/nodes.py            → high-risk review and approval resume nodes
+app/nodes.py            → route nodes, high-risk review, tool-result capture, and approval resume nodes
+app/tools.py            → simulated read-only and preview-only tools
 app/state.py            → approval state fields
 tests/test_api.py       → approval and resume API tests
 ```
+
 ---
 
 ## Current Test Coverage
@@ -176,6 +179,44 @@ The HITL approval flow is covered by API tests for:
 - approved resume path
 - rejected resume path
 - missing approval resume failure
+
+---
+
+## Current Tool Layer
+
+The project now includes a simulated tool layer for safe enterprise-style tool design.
+
+Current tools:
+
+| Tool | Type | Used By | Purpose |
+|---|---|---|---|
+| `lookup_billing_record` | read-only | `billing_node` | Returns mock billing evidence for duplicate-charge or billing tickets |
+| `get_technical_diagnostics` | read-only | `technical_node` | Returns a mock diagnostics checklist for technical tickets |
+| `preview_high_risk_action` | preview-only | `high_risk_review_node` | Generates a high-risk action preview without executing any write action |
+
+The important boundary is:
+
+```text
+read-only tools may run automatically
+preview-only tools may run before approval
+write tools must not run without explicit approval
+```
+
+Tool outputs are stored in graph state as `tool_results`.
+
+For high-risk tickets, the preview tool records:
+
+```json
+{
+  "tool_name": "preview_high_risk_action",
+  "tool_type": "preview_only",
+  "requires_human_approval": true,
+  "write_action_executed": false,
+  "side_effect": "none"
+}
+```
+
+This gives reviewers useful context while preserving the safety rule that approval does not automatically execute an action.
 
 ---
 
@@ -285,6 +326,8 @@ This design demonstrates several production agent principles:
 LLM classifies.
 Code routes.
 High-risk actions are isolated.
+Tool outputs are captured as structured evidence.
+Read-only and preview-only tools are separated from write tools.
 Human approval is represented explicitly in state.
 Approval decisions are auditable.
 Resume behavior is safe by default.
@@ -305,8 +348,8 @@ high-risk graph node
 → user or manager approval captured externally
 → graph resumes using thread_id
 → approval_id is verified
-→ action preview is generated
-→ write tool executes only if approved
+→ action preview is generated using a preview-only tool
+→ write tool executes only if approved and idempotency is configured
 → idempotency key prevents duplicate execution
 → audit log persists the decision trail
 ```
@@ -323,7 +366,7 @@ Before real write tools are introduced, the system should add:
 - approval identity verification
 - permission checks for approvers
 - idempotency keys for write tools
-- action preview step before execution
+- promotion path from preview-only tools to approved write tools
 - durable audit logs
 - status reconciliation after write-tool timeout
 - LangSmith dataset-based evaluation for approval paths
@@ -350,4 +393,4 @@ classify
 → audit
 ```
 
-The current project has implemented the early approval simulation stage, local JSON-backed approval persistence, and safe resume behavior. Real tool execution remains intentionally out of scope for now.
+The current project has implemented the early approval simulation stage, local JSON-backed approval persistence, simulated read-only and preview-only tools, tool-result capture, and safe resume behavior. Real write-tool execution remains intentionally out of scope for now.

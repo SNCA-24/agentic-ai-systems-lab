@@ -22,6 +22,8 @@ Implemented:
 - HITL design documentation in `docs/hitl_design.md`
 - Workflow path tracking
 - Structured trace events
+- Simulated read-only and preview-only tool layer
+- Tool result capture in graph state via `tool_results`
 - Local evaluation runner
 - LangSmith metadata and tags for demo/eval/API runs
 - FastAPI service layer with `/health`, `/tickets/triage`, `POST /tickets/{ticket_id}/approval`, `GET /tickets/{ticket_id}/approval`, and `POST /tickets/{ticket_id}/resume`
@@ -33,7 +35,7 @@ Current eval/test status:
 
 ```text
 Passed 5/5 evals
-pytest: 29/29 passed
+pytest: 34/34 passed
 ```
 
 ---
@@ -113,6 +115,7 @@ Current implemented flow:
 ```text
 1. POST /tickets/triage
    → high-risk ticket routes to high_risk_review_node
+   → preview_high_risk_action generates a preview-only action review
    → approval_status = pending
    → no write action is executed
 
@@ -157,7 +160,7 @@ Important production concepts still planned:
 - idempotency keys for write tools
 - audit log persistence
 - database-backed approval store
-- real tool execution boundaries
+- promotion path from preview-only tools to approved write tools
   
 
 ---
@@ -298,7 +301,49 @@ This is a lightweight local observability layer before deeper production monitor
 
 ---
 
-### 7. LangSmith Observability Metadata
+### 7. Tool Layer and Tool Results
+
+The project includes deterministic simulated tools that demonstrate safe enterprise tool design.
+
+Current tools:
+
+| Tool | Type | Used By | Purpose |
+|---|---|---|---|
+| `lookup_billing_record` | read-only | `billing_node` | Returns mock billing evidence for billing/duplicate-charge tickets |
+| `get_technical_diagnostics` | read-only | `technical_node` | Returns a mock diagnostics checklist for technical tickets |
+| `preview_high_risk_action` | preview-only | `high_risk_review_node` | Generates a high-risk action preview without executing any write action |
+
+The design boundary is:
+
+```text
+Read-only tools may run automatically.
+Preview-only tools may run before approval.
+Write tools must not run without explicit approval.
+```
+
+Tool outputs are captured in graph state as:
+
+```text
+tool_results
+```
+
+For high-risk tickets, the preview tool records:
+
+```json
+{
+  "tool_name": "preview_high_risk_action",
+  "tool_type": "preview_only",
+  "requires_human_approval": true,
+  "write_action_executed": false,
+  "side_effect": "none"
+}
+```
+
+This allows reviewers to see action context while preserving the safety rule that approval is required before any real write action.
+
+---
+
+### 8. LangSmith Observability Metadata
 
 The graph is invoked with LangSmith-friendly config metadata and tags for demo, eval, and API runs.
 
@@ -339,7 +384,8 @@ support_ticket_triage_agent_v2/
 │   ├── graph.py
 │   ├── nodes.py
 │   ├── schemas.py
-│   └── state.py
+│   ├── state.py
+│   └── tools.py
 │
 ├── evals/
 │   ├── __init__.py
@@ -354,7 +400,8 @@ support_ticket_triage_agent_v2/
 │   ├── test_api.py
 │   ├── test_mock_classifier.py
 │   ├── test_routing.py
-│   └── test_trace_events.py
+│   ├── test_trace_events.py
+│   └── test_tools.py
 │
 ├── .env.example
 ├── .gitignore
@@ -453,6 +500,9 @@ The test suite covers:
 - high-risk isolation
 - empty input handling
 - trace event recording
+- simulated tool behavior
+- read-only tool boundary
+- preview-only high-risk action behavior
 - FastAPI health check
 - FastAPI triage endpoint behavior
 - FastAPI approval endpoint behavior
@@ -462,7 +512,7 @@ The test suite covers:
 Current expected result:
 
 ```text
-29 passed
+34 passed
 ```
 
 ---
@@ -641,6 +691,9 @@ Route high-risk requests to review.
 Run local evals in mock mode to control cost.
 Attach LangSmith metadata for observability.
 Use FastAPI for service endpoints.
+Use read-only tools for automatic evidence collection.
+Use preview-only tools for high-risk action review.
+Never execute write tools without explicit approval.
 ```
 
 ---
@@ -649,8 +702,8 @@ Use FastAPI for service endpoints.
 
 This version does not yet include:
 
-- real billing tools
-- real CRM tools
+- real billing tools beyond deterministic simulations
+- real CRM tools beyond deterministic simulations
 - RAG over policy documents
 - durable human approval interrupts with persisted LangGraph checkpoint resume
 - database-backed approval persistence and durable LangGraph checkpointing
@@ -666,7 +719,7 @@ These are planned future extensions.
 
 1. Add durable human-in-the-loop approval resume with checkpointing
 2. Add RAG over refund/support policy documents
-3. Add tool design layer with read/write tool separation
+3. Add approved write-tool execution path with idempotency and audit logging
 4. Add database-backed approval persistence and durable LangGraph checkpointing
 5. Add LangSmith dataset-based evaluation
 6. Add Dockerfile and deployment guide
@@ -676,7 +729,7 @@ These are planned future extensions.
 
 ## Resume Bullet
 
-Built a LangGraph-based support ticket triage agent with typed state, structured classification, deterministic routing, risk-aware high-risk review, workflow-path tracking, trace events, local evals, pytest coverage, FastAPI service endpoints, cost-safe mock mode, and LangSmith observability metadata.
+Built a LangGraph-based support ticket triage agent with typed state, structured classification, deterministic routing, risk-aware high-risk review, workflow-path tracking, trace events, simulated read-only/preview-only tools, tool-result capture, local evals, pytest coverage, FastAPI service endpoints, cost-safe mock mode, and LangSmith observability metadata.
 
 ---
 
@@ -689,6 +742,8 @@ This project demonstrates practical agent engineering skills relevant to AI Engi
 - typed schemas
 - structured outputs
 - safe routing
+- read-only vs preview-only tool design
+- tool-result state capture
 - risk-aware workflows
 - observability
 - evaluation
