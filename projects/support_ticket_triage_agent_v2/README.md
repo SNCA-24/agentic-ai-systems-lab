@@ -34,6 +34,10 @@ Implemented:
 - API tests using FastAPI `TestClient`
 - GitHub monorepo integration
 - GitHub Actions CI for pytest and local evals
+- Architecture documentation in `docs/architecture.md`
+- Demo scripts for interruptible graph and checkpointed API flows
+- Project-level `Makefile` for common local commands
+- Dockerfile for local containerized FastAPI runs
 
 Current eval/test status:
 
@@ -369,6 +373,12 @@ For deeper design details, see:
 docs/hitl_design.md
 ```
 
+For system architecture diagrams, see:
+
+```text
+docs/architecture.md
+```
+
 ---
 
 ## Core Concepts Demonstrated
@@ -618,7 +628,8 @@ support_ticket_triage_agent_v2/
 │   └── test_cases.json
 │
 ├── scripts/
-│   # demo scripts can live here
+│   ├── demo_checkpointed_api.sh
+│   └── demo_interruptible_graph.py
 │
 ├── tests/
 │   ├── __init__.py
@@ -634,8 +645,11 @@ support_ticket_triage_agent_v2/
 │   ├── test_trace_events.py
 │   └── test_write_tools.py
 │
+├── .dockerignore
 ├── .env.example
 ├── .gitignore
+├── Dockerfile
+├── Makefile
 ├── main.py
 ├── README.md
 └── requirements.txt
@@ -696,6 +710,30 @@ Expected behavior:
 
 ---
 
+## Makefile Commands
+
+Common local commands are available through the project-level `Makefile`.
+
+```zsh
+make install          # install dependencies
+make compile          # compile-check main app files and demo script
+make test             # run pytest
+make eval             # run local evals
+make check            # run compile + tests + evals
+make run-api          # run FastAPI with uvicorn
+make demo-interrupt   # run interrupt-style graph demo
+make demo-api         # run checkpointed API demo; requires API server running
+make clean            # remove Python cache/test cache artifacts
+```
+
+Recommended verification command:
+
+```zsh
+make check
+```
+
+---
+
 ## Running Evaluations
 
 ```zsh
@@ -714,6 +752,56 @@ Current expected result:
 
 ```text
 Passed 5/5 evals
+```
+
+---
+
+## Demo Scripts
+
+### Interruptible graph demo
+
+This demonstrates the true LangGraph `interrupt()` / `Command(resume=...)` flow.
+
+```zsh
+python scripts/demo_interruptible_graph.py
+```
+
+Equivalent Makefile command:
+
+```zsh
+make demo-interrupt
+```
+
+Expected behavior:
+
+```text
+high-risk ticket
+→ graph pauses with interrupt(...)
+→ approval payload resumes same graph thread
+→ approved simulated write tool executes
+```
+
+### Checkpointed API demo
+
+Start the API in one terminal:
+
+```zsh
+make run-api
+```
+
+Then in another terminal:
+
+```zsh
+make demo-api
+```
+
+Expected behavior:
+
+```text
+checkpointed triage
+→ approval recorded
+→ first checkpointed resume executes approved write simulation
+→ second checkpointed resume is skipped by idempotency
 ```
 
 ---
@@ -927,6 +1015,43 @@ View interactive API docs at:
 
 ---
 
+## Docker Run
+
+Build the local Docker image from the project folder:
+
+```zsh
+docker build -t support-ticket-triage-agent-v2 .
+```
+
+Run the container on port `8001` to avoid conflicts with any local `uvicorn` process on port `8000`:
+
+```zsh
+docker run --rm -p 8001:8000 \
+  -e CLASSIFIER_MODE=mock \
+  -e APP_ENV=docker \
+  -e LANGSMITH_TRACING=false \
+  -e OPENAI_API_KEY=dummy-docker-key \
+  support-ticket-triage-agent-v2
+```
+
+Verify from another terminal:
+
+```zsh
+curl http://127.0.0.1:8001/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "classifier_mode": "mock",
+  "environment": "docker"
+}
+```
+
+---
+
 ## Example Tickets
 
 ### Technical Ticket
@@ -1020,7 +1145,7 @@ This version does not yet include:
 - approver identity verification
 - role-based approval authorization
 - LangSmith dataset-based experiments
-- FastAPI deployment beyond local dev
+- hosted FastAPI deployment beyond local Docker/dev runs
 
 These are future extensions, not blockers for the current portfolio milestone.
 
@@ -1030,13 +1155,10 @@ These are future extensions, not blockers for the current portfolio milestone.
 
 Project 1 core engineering milestones are complete. Remaining work is final polish:
 
-1. Add demo script for the interruptible graph
-2. Add architecture diagram / `docs/architecture.md`
-3. Add Makefile for common commands
-4. Add Dockerfile and deployment guide
-5. Update root README with final Project 1 state
-6. Add LangSmith screenshots or run-inspection notes
-7. Final cleanup before starting Project 2
+1. Add LangSmith screenshots or run-inspection notes
+2. Add final cleanup checklist before starting Project 2
+3. Optionally add a short demo GIF or terminal-output screenshot
+4. Optionally add production extension notes for Postgres, durable checkpointing, auth, and real tools
 
 ---
 
