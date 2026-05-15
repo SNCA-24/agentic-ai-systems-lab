@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
-from app.graph import ticket_graph
+from app.graph import approval_resume_graph, ticket_graph
 from app.schemas import (
     ApprovalRecord,
     ApprovalRequest,
     ApprovalResponse,
+    ResumeResponse,
     TriageRequest,
     TriageResponse,
 )
@@ -145,3 +146,70 @@ def get_approval(ticket_id: str) -> ApprovalRecord:
         )
 
     return record
+
+
+@app.post("/tickets/{ticket_id}/resume", response_model=ResumeResponse)
+def resume_ticket(ticket_id: str) -> ResumeResponse:
+    """
+    Resume a high-risk workflow from the latest approval decision.
+
+    Current implementation uses the in-memory approval store and a safe resume graph.
+    It does not execute any real write action.
+    """
+    record = approval_store.get(ticket_id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Cannot resume ticket_id={ticket_id} because no approval decision was found.",
+        )
+
+    initial_state: AgentState = {
+        "ticket_id": ticket_id,
+        "user_message": "Resume high-risk workflow after approval decision.",
+        "category": "technical",
+        "intent": "high_risk_account_or_financial_action",
+        "risk_level": "high",
+        "needs_human_review": True,
+        "confidence": 0.99,
+        "decision_summary": "High-risk workflow resume requested after human approval decision.",
+        "approval_status": record.approval_status,
+        "approval_id": record.approval_id,
+        "approval_notes": record.approval_notes,
+        "approved_by": record.approved_by,
+        "workflow_path": [],
+        "trace_events": [],
+        "errors": [],
+        "final_response": None,
+    }
+
+    config = {
+        "run_name": "support_ticket_triage_resume_run",
+        "tags": [
+            "support-ticket-triage",
+            "resume-run",
+            f"classifier:{CLASSIFIER_MODE}",
+            f"env:{APP_ENV}",
+        ],
+        "metadata": {
+            "ticket_id": ticket_id,
+            "approval_status": record.approval_status,
+            "approval_id": record.approval_id,
+            "approved_by": record.approved_by,
+            "run_source": "resume_api",
+            "environment": APP_ENV,
+            "langsmith_project": LANGSMITH_PROJECT_NAME,
+        },
+    }
+
+    result = approval_resume_graph.invoke(initial_state, config=config)
+
+    return ResumeResponse(
+        ticket_id=result["ticket_id"],
+        approval_status=result["approval_status"],
+        approval_id=result["approval_id"],
+        approved_by=result["approved_by"],
+        workflow_path=result["workflow_path"],
+        trace_events_count=len(result.get("trace_events", [])),
+        final_response=result["final_response"],
+        errors=result["errors"],
+    )

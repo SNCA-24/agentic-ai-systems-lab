@@ -22,7 +22,7 @@ Implemented:
 - Structured trace events
 - Local evaluation runner
 - LangSmith metadata and tags for demo/eval/API runs
-- FastAPI service layer with `/health`, `/tickets/triage`, `POST /tickets/{ticket_id}/approval`, and `GET /tickets/{ticket_id}/approval`
+- FastAPI service layer with `/health`, `/tickets/triage`, `POST /tickets/{ticket_id}/approval`, `GET /tickets/{ticket_id}/approval`, and `POST /tickets/{ticket_id}/resume`
 - API tests using FastAPI `TestClient`
 - GitHub monorepo integration
 - GitHub Actions CI for pytest and local evals
@@ -31,7 +31,7 @@ Current eval/test status:
 
 ```text
 Passed 5/5 evals
-pytest: 23/23 passed
+pytest: 29/29 passed
 ```
 
 ---
@@ -382,11 +382,12 @@ The test suite covers:
 - FastAPI triage endpoint behavior
 - FastAPI approval endpoint behavior
 - In-memory approval decision retrieval
+- API-level approval resume behavior
 
 Current expected result:
 
 ```text
-23 passed
+29 passed
 ```
 
 ---
@@ -481,6 +482,26 @@ curl http://127.0.0.1:8000/tickets/CURL-002/approval
 
 Important: the current approval store is in-memory and intended for local development only. It resets when the API process restarts. A durable store/checkpointer is planned for a later step.
 
+Resume the workflow from the latest approval decision:
+
+```zsh
+curl -X POST http://127.0.0.1:8000/tickets/CURL-002/resume
+```
+
+Expected key fields for an approved decision:
+
+```json
+{
+  "ticket_id": "CURL-002",
+  "approval_status": "approved",
+  "workflow_path": ["approval_resume_entry_node", "approval_approved_node"],
+  "trace_events_count": 1,
+  "errors": []
+}
+```
+
+Important: the resume endpoint currently resumes into a safe response path only. It does not execute real write actions.
+
 View interactive API docs at:
 
 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
@@ -556,7 +577,7 @@ This version does not yet include:
 - real billing tools
 - real CRM tools
 - RAG over policy documents
-- durable human approval interrupts and graph resume
+- durable human approval interrupts with persisted LangGraph checkpoint resume
 - durable approval persistence and persistent checkpointing
 - FastAPI deployment beyond local dev
 - production auth/security

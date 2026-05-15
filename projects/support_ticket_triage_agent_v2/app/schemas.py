@@ -67,3 +67,14 @@ class ApprovalRecord(BaseModel):
     approved_by: str | None
     approval_notes: str | None
     message: str
+
+
+class ResumeResponse(BaseModel):
+    ticket_id: str
+    approval_status: Literal["approved", "rejected", "pending", "expired", "not_required"]
+    approval_id: str | None
+    approved_by: str | None
+    workflow_path: list[str]
+    trace_events_count: int
+    final_response: str | None
+    errors: list[str]

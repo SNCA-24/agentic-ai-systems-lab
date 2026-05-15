@@ -180,3 +180,65 @@ def test_get_approval_returns_404_when_missing():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "No approval decision found for ticket_id=UNKNOWN."
+
+
+def test_resume_endpoint_routes_approved_decision():
+    approval_response = client.post(
+        "/tickets/API-008/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_888",
+            "approved_by": "manager_003",
+            "approval_notes": "Approved for resume test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    resume_response = client.post("/tickets/API-008/resume")
+
+    assert resume_response.status_code == 200
+    body = resume_response.json()
+    assert body["ticket_id"] == "API-008"
+    assert body["approval_status"] == "approved"
+    assert body["approval_id"] == "approval_888"
+    assert body["approved_by"] == "manager_003"
+    assert body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_approved_node",
+    ]
+    assert body["trace_events_count"] == 1
+    assert body["errors"] == []
+    assert "ready to continue" in body["final_response"]
+
+
+def test_resume_endpoint_routes_rejected_decision():
+    approval_response = client.post(
+        "/tickets/API-009/approval",
+        json={
+            "approved": False,
+            "approved_by": "manager_003",
+            "approval_notes": "Rejected for resume test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    resume_response = client.post("/tickets/API-009/resume")
+
+    assert resume_response.status_code == 200
+    body = resume_response.json()
+    assert body["ticket_id"] == "API-009"
+    assert body["approval_status"] == "rejected"
+    assert body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_rejected_node",
+    ]
+    assert body["trace_events_count"] == 1
+    assert body["errors"] == []
+    assert "remains blocked" in body["final_response"]
+
+
+def test_resume_endpoint_returns_404_when_approval_missing():
+    response = client.post("/tickets/UNKNOWN/resume")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Cannot resume ticket_id=UNKNOWN because no approval decision was found."
