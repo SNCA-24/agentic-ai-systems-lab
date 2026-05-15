@@ -78,5 +78,6 @@ class ResumeResponse(BaseModel):
     workflow_path: list[str]
     trace_events_count: int
     tool_results_count: int
+    last_tool_result: dict | None
     final_response: str | None
     errors: list[str]

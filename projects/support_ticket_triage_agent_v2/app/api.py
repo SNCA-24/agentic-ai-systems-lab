@@ -205,6 +205,8 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
     }
 
     result = approval_resume_graph.invoke(initial_state, config=config)
+    tool_results = result.get("tool_results", [])
+    last_tool_result = tool_results[-1] if tool_results else None
 
     return ResumeResponse(
         ticket_id=result["ticket_id"],
@@ -213,7 +215,8 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
         approved_by=result["approved_by"],
         workflow_path=result["workflow_path"],
         trace_events_count=len(result.get("trace_events", [])),
-        tool_results_count=len(result.get("tool_results", [])),
+        tool_results_count=len(tool_results),
+        last_tool_result=last_tool_result,
         final_response=result["final_response"],
         errors=result["errors"],
     )

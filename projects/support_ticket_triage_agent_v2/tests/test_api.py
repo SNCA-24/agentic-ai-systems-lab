@@ -211,8 +211,54 @@ def test_resume_endpoint_routes_approved_decision():
     ]
     assert body["trace_events_count"] == 2
     assert body["tool_results_count"] == 1
+    assert body["last_tool_result"]["tool_name"] == "execute_approved_high_risk_action"
+    assert body["last_tool_result"]["status"] == "success"
+    assert body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert body["last_tool_result"]["result"]["duplicate_prevented"] is False
     assert body["errors"] == []
     assert "simulated successfully" in body["final_response"]
+
+
+def test_resume_endpoint_is_idempotent_for_approved_action():
+    approval_response = client.post(
+        "/tickets/API-010/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_1010",
+            "approved_by": "manager_010",
+            "approval_notes": "Approved for idempotency test.",
+        },
+    )
+    assert approval_response.status_code == 200
+
+    first_resume_response = client.post("/tickets/API-010/resume")
+    second_resume_response = client.post("/tickets/API-010/resume")
+
+    assert first_resume_response.status_code == 200
+    first_body = first_resume_response.json()
+    assert first_body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_approved_node",
+        "execute_approved_action_node",
+    ]
+    assert first_body["tool_results_count"] == 1
+    assert first_body["last_tool_result"]["status"] == "success"
+    assert first_body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert first_body["last_tool_result"]["result"]["duplicate_prevented"] is False
+
+    assert second_resume_response.status_code == 200
+    second_body = second_resume_response.json()
+    assert second_body["workflow_path"] == [
+        "approval_resume_entry_node",
+        "approval_approved_node",
+        "execute_approved_action_node",
+    ]
+    assert second_body["tool_results_count"] == 1
+    assert second_body["last_tool_result"]["status"] == "skipped"
+    assert second_body["last_tool_result"]["result"]["write_action_executed"] is True
+    assert second_body["last_tool_result"]["result"]["duplicate_prevented"] is True
+    assert second_body["last_tool_result"]["result"]["skip_reason"] == "idempotency_key_already_executed"
+    assert "not executed again" in second_body["final_response"]
 
 
 def test_resume_endpoint_routes_rejected_decision():
@@ -237,6 +283,8 @@ def test_resume_endpoint_routes_rejected_decision():
         "approval_rejected_node",
     ]
     assert body["trace_events_count"] == 1
+    assert body["tool_results_count"] == 0
+    assert body["last_tool_result"] is None
     assert body["errors"] == []
     assert "remains blocked" in body["final_response"]
 
