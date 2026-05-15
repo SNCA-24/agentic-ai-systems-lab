@@ -9,6 +9,9 @@ from app.nodes import (
     general_node,
     high_risk_review_node,
     error_node,
+    approval_approved_node,
+    approval_rejected_node,
+    approval_blocked_node,
 )
 
 
@@ -34,6 +37,20 @@ def route_after_classification(state: AgentState) -> str:
 
     return "error"
 
+def route_after_approval_status(state: AgentState) -> str:
+    if state["approval_status"] == "approved":
+        return "approved"
+
+    if state["approval_status"] == "rejected":
+        return "rejected"
+
+    return "blocked"
+
+
+def approval_resume_entry_node(state: AgentState) -> dict:
+    return {
+        "workflow_path": state["workflow_path"] + ["approval_resume_entry_node"],
+    }
 
 builder = StateGraph(AgentState)
 
@@ -75,3 +92,28 @@ builder.add_edge("high_risk_review_node", END)
 builder.add_edge("error_node", END)
 
 ticket_graph = builder.compile()
+
+approval_resume_builder = StateGraph(AgentState)
+
+approval_resume_builder.add_node("approval_resume_entry_node", approval_resume_entry_node)
+approval_resume_builder.add_node("approval_approved_node", approval_approved_node)
+approval_resume_builder.add_node("approval_rejected_node", approval_rejected_node)
+approval_resume_builder.add_node("approval_blocked_node", approval_blocked_node)
+
+approval_resume_builder.add_edge(START, "approval_resume_entry_node")
+
+approval_resume_builder.add_conditional_edges(
+    "approval_resume_entry_node",
+    route_after_approval_status,
+    {
+        "approved": "approval_approved_node",
+        "rejected": "approval_rejected_node",
+        "blocked": "approval_blocked_node",
+    },
+)
+
+approval_resume_builder.add_edge("approval_approved_node", END)
+approval_resume_builder.add_edge("approval_rejected_node", END)
+approval_resume_builder.add_edge("approval_blocked_node", END)
+
+approval_resume_graph = approval_resume_builder.compile()

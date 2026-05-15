@@ -405,6 +405,76 @@ def high_risk_review_node(state: AgentState) -> dict:
         ),
     }
 
+def approval_approved_node(state: AgentState) -> dict:
+    return {
+        "workflow_path": state["workflow_path"] + ["approval_approved_node"],
+        "approval_status": "approved",
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="approval_approved_node",
+            event_type="approval_resume_approved",
+            message="Approval decision was approved. Workflow is ready for the approved action path.",
+            metadata={
+                "ticket_id": state["ticket_id"],
+                "approval_status": "approved",
+                "approval_id": state["approval_id"],
+                "approved_by": state["approved_by"],
+            },
+        ),
+        "final_response": (
+            "Human approval was recorded as approved. "
+            "The workflow is ready to continue to the approved action path. "
+            "No write action has been executed in this version."
+        ),
+    }
+
+
+def approval_rejected_node(state: AgentState) -> dict:
+    return {
+        "workflow_path": state["workflow_path"] + ["approval_rejected_node"],
+        "approval_status": "rejected",
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="approval_rejected_node",
+            event_type="approval_resume_rejected",
+            message="Approval decision was rejected. Workflow is safely blocked.",
+            metadata={
+                "ticket_id": state["ticket_id"],
+                "approval_status": "rejected",
+                "approval_id": state["approval_id"],
+                "approved_by": state["approved_by"],
+            },
+        ),
+        "final_response": (
+            "Human approval was rejected. "
+            "The high-risk action remains blocked and no write action has been executed."
+        ),
+    }
+
+
+def approval_blocked_node(state: AgentState) -> dict:
+    return {
+        "workflow_path": state["workflow_path"] + ["approval_blocked_node"],
+        "trace_events": add_trace_event(
+            state["trace_events"],
+            node="approval_blocked_node",
+            event_type="approval_resume_blocked",
+            message="Approval decision is missing, pending, or expired. Workflow remains blocked.",
+            metadata={
+                "ticket_id": state["ticket_id"],
+                "approval_status": state["approval_status"],
+                "approval_id": state["approval_id"],
+                "approved_by": state["approved_by"],
+            },
+        ),
+        "errors": state["errors"] + [
+            f"Cannot resume workflow because approval_status={state['approval_status']}."
+        ],
+        "final_response": (
+            "The workflow cannot resume because approval is missing, pending, or expired. "
+            "No write action has been executed."
+        ),
+    }
 
 def error_node(state: AgentState) -> dict:
     return {
