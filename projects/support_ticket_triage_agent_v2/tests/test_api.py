@@ -1,9 +1,13 @@
 from fastapi.testclient import TestClient
 
-from app.api import app
+from app.api import app, approval_store
 
 
 client = TestClient(app)
+
+
+def setup_function():
+    approval_store.clear()
 
 
 def test_health_check_returns_ok():
@@ -146,3 +150,33 @@ def test_approval_endpoint_records_rejected_decision():
     assert body["approved_by"] == "manager_001"
     assert body["approval_notes"] == "Requester verification failed."
     assert body["message"] == "Approval rejected. No write action has been executed."
+
+
+def test_approval_decision_can_be_retrieved_after_recording():
+    post_response = client.post(
+        "/tickets/API-007/approval",
+        json={
+            "approved": True,
+            "approval_id": "approval_777",
+            "approved_by": "manager_002",
+            "approval_notes": "Approved after verification.",
+        },
+    )
+    assert post_response.status_code == 200
+
+    get_response = client.get("/tickets/API-007/approval")
+
+    assert get_response.status_code == 200
+    body = get_response.json()
+    assert body["ticket_id"] == "API-007"
+    assert body["approval_status"] == "approved"
+    assert body["approval_id"] == "approval_777"
+    assert body["approved_by"] == "manager_002"
+    assert body["approval_notes"] == "Approved after verification."
+
+
+def test_get_approval_returns_404_when_missing():
+    response = client.get("/tickets/UNKNOWN/approval")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "No approval decision found for ticket_id=UNKNOWN."

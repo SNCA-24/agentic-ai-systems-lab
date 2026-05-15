@@ -22,7 +22,7 @@ Implemented:
 - Structured trace events
 - Local evaluation runner
 - LangSmith metadata and tags for demo/eval/API runs
-- FastAPI service layer with `/health`, `/tickets/triage`, and `/tickets/{ticket_id}/approval`
+- FastAPI service layer with `/health`, `/tickets/triage`, `POST /tickets/{ticket_id}/approval`, and `GET /tickets/{ticket_id}/approval`
 - API tests using FastAPI `TestClient`
 - GitHub monorepo integration
 - GitHub Actions CI for pytest and local evals
@@ -381,6 +381,7 @@ The test suite covers:
 - FastAPI health check
 - FastAPI triage endpoint behavior
 - FastAPI approval endpoint behavior
+- In-memory approval decision retrieval
 
 Current expected result:
 
@@ -472,6 +473,14 @@ Expected key fields:
 
 Important: this approval endpoint records a typed approval decision only. Durable graph resume and checkpointing are planned for a later step.
 
+Retrieve the latest approval decision:
+
+```zsh
+curl http://127.0.0.1:8000/tickets/CURL-002/approval
+```
+
+Important: the current approval store is in-memory and intended for local development only. It resets when the API process restarts. A durable store/checkpointer is planned for a later step.
+
 View interactive API docs at:
 
 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
@@ -548,7 +557,7 @@ This version does not yet include:
 - real CRM tools
 - RAG over policy documents
 - durable human approval interrupts and graph resume
-- persistent checkpointing
+- durable approval persistence and persistent checkpointing
 - FastAPI deployment beyond local dev
 - production auth/security
 - LangSmith dataset-based experiments

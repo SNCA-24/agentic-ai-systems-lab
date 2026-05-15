@@ -58,3 +58,12 @@ class ApprovalResponse(BaseModel):
     approved_by: str | None
     approval_notes: str | None
     message: str
+
+
+class ApprovalRecord(BaseModel):
+    ticket_id: str
+    approval_status: Literal["approved", "rejected"]
+    approval_id: str | None
+    approved_by: str | None
+    approval_notes: str | None
+    message: str

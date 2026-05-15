@@ -1,8 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from app.config import APP_ENV, CLASSIFIER_MODE, LANGSMITH_PROJECT_NAME
 from app.graph import ticket_graph
-from app.schemas import ApprovalRequest, ApprovalResponse, TriageRequest, TriageResponse
+from app.schemas import (
+    ApprovalRecord,
+    ApprovalRequest,
+    ApprovalResponse,
+    TriageRequest,
+    TriageResponse,
+)
 from app.state import AgentState
 
 
@@ -11,6 +17,9 @@ app = FastAPI(
     description="Graph-orchestrated support ticket triage agent with risk-aware routing.",
     version="0.1.0",
 )
+
+
+approval_store: dict[str, ApprovalRecord] = {}
 
 
 @app.get("/health")
@@ -97,7 +106,7 @@ def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalRespons
                 message="Approval was not accepted because approval_id is required when approved is true.",
             )
 
-        return ApprovalResponse(
+        record = ApprovalRecord(
             ticket_id=ticket_id,
             approval_status="approved",
             approval_id=request.approval_id,
@@ -105,8 +114,10 @@ def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalRespons
             approval_notes=request.approval_notes,
             message="Approval recorded. Workflow resume is not implemented yet.",
         )
+        approval_store[ticket_id] = record
+        return ApprovalResponse(**record.model_dump())
 
-    return ApprovalResponse(
+    record = ApprovalRecord(
         ticket_id=ticket_id,
         approval_status="rejected",
         approval_id=request.approval_id,
@@ -114,3 +125,23 @@ def record_approval(ticket_id: str, request: ApprovalRequest) -> ApprovalRespons
         approval_notes=request.approval_notes,
         message="Approval rejected. No write action has been executed.",
     )
+    approval_store[ticket_id] = record
+    return ApprovalResponse(**record.model_dump())
+
+
+@app.get("/tickets/{ticket_id}/approval", response_model=ApprovalRecord)
+def get_approval(ticket_id: str) -> ApprovalRecord:
+    """
+    Return the latest human approval decision for a ticket.
+
+    Current implementation uses an in-memory development store.
+    Durable storage will be added in a later step.
+    """
+    record = approval_store.get(ticket_id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No approval decision found for ticket_id={ticket_id}.",
+        )
+
+    return record
