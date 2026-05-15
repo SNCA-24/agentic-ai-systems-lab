@@ -7,11 +7,19 @@ RiskLevel = Literal["low", "medium", "high"]
 ApprovalStatus = Literal["not_required", "pending", "approved", "rejected", "expired"]
 
 
+
 class TraceEvent(TypedDict):
     node: str
     event_type: str
     message: str
     metadata: dict[str, Any]
+
+
+# New ToolResult TypedDict
+class ToolResult(TypedDict):
+    tool_name: str
+    status: Literal["success", "failed", "skipped"]
+    result: dict[str, Any]
 
 
 class AgentState(TypedDict):
@@ -33,6 +41,7 @@ class AgentState(TypedDict):
 
     workflow_path: list[str]
     trace_events: list[TraceEvent]
+    tool_results: list[ToolResult]
 
     errors: list[str]
     final_response: Optional[str]

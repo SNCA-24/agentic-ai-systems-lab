@@ -31,6 +31,7 @@ def run_single_eval(test_case: dict) -> dict:
         "approved_by": None,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }
@@ -102,6 +103,7 @@ def run_single_eval(test_case: dict) -> dict:
             "final_node": actual_final_node,
             "final_response": result["final_response"],
             "errors": result["errors"],
+            "tool_results": result["tool_results"],
         },
     }
 

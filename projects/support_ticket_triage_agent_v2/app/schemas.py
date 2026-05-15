@@ -31,6 +31,7 @@ class TriageResponse(BaseModel):
     decision_summary: str | None
     workflow_path: list[str]
     trace_events_count: int
+    tool_results_count: int
     final_response: str | None
     errors: list[str]
 
@@ -76,5 +77,6 @@ class ResumeResponse(BaseModel):
     approved_by: str | None
     workflow_path: list[str]
     trace_events_count: int
+    tool_results_count: int
     final_response: str | None
     errors: list[str]

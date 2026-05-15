@@ -18,6 +18,7 @@ def run_graph(message: str, ticket_id: str = "TEST-TRACE-001") -> AgentState:
         "approved_by": None,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }

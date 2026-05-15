@@ -47,6 +47,7 @@ def triage_ticket(request: TriageRequest) -> TriageResponse:
         "approved_by": None,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }
@@ -81,6 +82,7 @@ def triage_ticket(request: TriageRequest) -> TriageResponse:
         decision_summary=result["decision_summary"],
         workflow_path=result["workflow_path"],
         trace_events_count=len(result.get("trace_events", [])),
+        tool_results_count=len(result.get("tool_results", [])),
         final_response=result["final_response"],
         errors=result["errors"],
     )
@@ -178,6 +180,7 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
         "approved_by": record.approved_by,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }
@@ -210,6 +213,7 @@ def resume_ticket(ticket_id: str) -> ResumeResponse:
         approved_by=result["approved_by"],
         workflow_path=result["workflow_path"],
         trace_events_count=len(result.get("trace_events", [])),
+        tool_results_count=len(result.get("tool_results", [])),
         final_response=result["final_response"],
         errors=result["errors"],
     )

@@ -5,6 +5,11 @@ from openai import OpenAI
 from app.config import CLASSIFIER_MODE, OPENAI_MODEL
 from app.schemas import TicketClassification
 from app.state import AgentState, TraceEvent
+from app.tools import (
+    get_technical_diagnostics,
+    lookup_billing_record,
+    preview_high_risk_action,
+)
 
 
 client = OpenAI()
@@ -320,43 +325,57 @@ def classify_ticket(state: AgentState) -> dict:
 
 
 def billing_node(state: AgentState) -> dict:
+    tool_result = lookup_billing_record(ticket_id=state["ticket_id"])
+
     return {
         "workflow_path": state["workflow_path"] + ["billing_node"],
+        "tool_results": state["tool_results"] + [tool_result.model_dump()],
         "trace_events": add_trace_event(
             state["trace_events"],
             node="billing_node",
             event_type="route_completed",
-            message="Ticket routed to billing workflow.",
+            message="Ticket routed to billing workflow and read-only billing evidence was collected.",
             metadata={
                 "category": state["category"],
                 "intent": state["intent"],
                 "risk_level": state["risk_level"],
+                "tool_name": tool_result.tool_name,
+                "tool_status": tool_result.status,
+                "tool_type": tool_result.result.get("tool_type"),
             },
         ),
         "final_response": (
             "This looks like a billing-related request. "
-            "Next step: check billing records and refund policy."
+            "A read-only billing lookup was completed. "
+            "Next step: review billing evidence and refund policy before taking action."
         ),
     }
 
 
 def technical_node(state: AgentState) -> dict:
+    tool_result = get_technical_diagnostics(ticket_id=state["ticket_id"])
+
     return {
         "workflow_path": state["workflow_path"] + ["technical_node"],
+        "tool_results": state["tool_results"] + [tool_result.model_dump()],
         "trace_events": add_trace_event(
             state["trace_events"],
             node="technical_node",
             event_type="route_completed",
-            message="Ticket routed to technical workflow.",
+            message="Ticket routed to technical workflow and diagnostic checklist was generated.",
             metadata={
                 "category": state["category"],
                 "intent": state["intent"],
                 "risk_level": state["risk_level"],
+                "tool_name": tool_result.tool_name,
+                "tool_status": tool_result.status,
+                "tool_type": tool_result.result.get("tool_type"),
             },
         ),
         "final_response": (
             "This looks like a technical issue. "
-            "Next step: collect diagnostics such as app version, device, logs, and error details."
+            "A read-only diagnostics checklist was generated. "
+            "Next step: collect app version, device/OS, logs, screenshots, and reproduction steps."
         ),
     }
 
@@ -383,25 +402,35 @@ def general_node(state: AgentState) -> dict:
 
 
 def high_risk_review_node(state: AgentState) -> dict:
+    tool_result = preview_high_risk_action(
+        ticket_id=state["ticket_id"],
+        intent=state["intent"],
+    )
+
     return {
         "workflow_path": state["workflow_path"] + ["high_risk_review_node"],
         "approval_status": "pending",
+        "tool_results": state["tool_results"] + [tool_result.model_dump()],
         "trace_events": add_trace_event(
             state["trace_events"],
             node="high_risk_review_node",
             event_type="human_review_required",
-            message="High-risk ticket routed to human review.",
+            message="High-risk ticket routed to human review and action preview was generated.",
             metadata={
                 "category": state["category"],
                 "intent": state["intent"],
                 "risk_level": state["risk_level"],
                 "needs_human_review": state["needs_human_review"],
                 "approval_status": "pending",
+                "tool_name": tool_result.tool_name,
+                "tool_status": tool_result.status,
+                "tool_type": tool_result.result.get("tool_type"),
+                "write_action_executed": tool_result.result.get("write_action_executed"),
             },
         ),
         "final_response": (
             "This request appears high-risk and has been marked as pending human approval. "
-            "No write action has been executed."
+            "A preview-only action review was generated, and no write action has been executed."
         ),
     }
 
