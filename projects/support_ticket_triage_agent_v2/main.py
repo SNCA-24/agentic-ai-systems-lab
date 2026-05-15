@@ -19,6 +19,7 @@ def run_ticket(ticket_id: str, user_message: str):
         "approved_by": None,
         "workflow_path": [],
         "trace_events": [],
+        "tool_results": [],
         "errors": [],
         "final_response": None,
     }
