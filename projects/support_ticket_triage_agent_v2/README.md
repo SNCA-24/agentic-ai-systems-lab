@@ -102,6 +102,64 @@ High-risk requests are isolated.
 
 ---
 
+## Human-in-the-Loop Architecture Roadmap
+
+The project currently implements a staged HITL flow for high-risk requests.
+
+Current implemented flow:
+
+```text
+1. POST /tickets/triage
+   → high-risk ticket routes to high_risk_review_node
+   → approval_status = pending
+   → no write action is executed
+
+2. POST /tickets/{ticket_id}/approval
+   → records approved/rejected decision in an in-memory approval store
+
+3. GET /tickets/{ticket_id}/approval
+   → retrieves the latest approval decision
+
+4. POST /tickets/{ticket_id}/resume
+   → routes approved decisions to approval_approved_node
+   → routes rejected decisions to approval_rejected_node
+   → blocks missing/pending/expired decisions
+   → no write action is executed
+```
+
+Current implementation boundary:
+
+```text
+This is an API-level HITL simulation with a safe resume graph.
+It is not durable checkpointing yet.
+```
+
+Future production version:
+
+```text
+high-risk graph node
+→ LangGraph interrupt/checkpoint
+→ human approval captured with approval_id
+→ graph resumes from saved thread_id
+→ approved path creates action preview
+→ idempotent write tool executes only after approval
+→ audit log records the full decision trail
+```
+
+Important production concepts still planned:
+
+- durable checkpointing
+- thread IDs
+- approval expiration
+- approval identity verification
+- idempotency keys for write tools
+- audit log persistence
+- persistent approval store
+- real tool execution boundaries
+  
+
+---
+
 ## Core Concepts Demonstrated
 
 ### 1. Explicit State

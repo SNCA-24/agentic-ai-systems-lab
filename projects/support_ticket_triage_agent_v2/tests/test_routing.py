@@ -24,6 +24,7 @@ def run_graph(message: str, ticket_id: str = "TEST-ROUTE-001") -> AgentState:
 
     return ticket_graph.invoke(initial_state)
 
+
 def run_approval_resume_graph(
     approval_status: str,
     approval_id: str | None = None,
@@ -49,6 +50,7 @@ def run_approval_resume_graph(
     }
 
     return approval_resume_graph.invoke(initial_state)
+
 
 def test_billing_ticket_routes_to_billing_node():
     result = run_graph("I was charged twice for my subscription.")
@@ -119,6 +121,7 @@ def test_empty_ticket_routes_to_error_node():
         "error_node",
     ]
     assert result["errors"] == ["Empty user message"]
+
 
 def test_approval_resume_routes_approved_decision_to_approved_node():
     result = run_approval_resume_graph(
