@@ -27,6 +27,8 @@ A LangGraph-based support ticket triage agent with:
 - risk-aware high-risk review path
 - workflow path tracking
 - structured trace events
+- simulated read-only and preview-only tool layer
+- tool-result capture in graph state
 - local evals
 - pytest coverage
 - LangSmith metadata
@@ -40,7 +42,7 @@ A LangGraph-based support ticket triage agent with:
 Current verification status:
 
 ```text
-pytest: 29/29 passed
+pytest: 34/34 passed
 local evals: 5/5 passed
 CI: enabled
 ```
@@ -64,6 +66,7 @@ agentic-ai-systems-lab/
 ├── projects/
 │   └── support_ticket_triage_agent_v2/
 │       ├── app/
+│       │   └── tools.py
 │       ├── data/
 │       │   └── approvals.json
 │       ├── docs/
@@ -108,7 +111,10 @@ This repo is a practical learning path for those skills.
 LLMs should reason and classify.
 Code should control workflow execution.
 High-risk actions should require approval.
-Tools should be typed and bounded.
+Tools should be typed, bounded, and separated by risk.
+Read-only tools can collect evidence automatically.
+Preview-only tools can support human review.
+Write tools require explicit approval and idempotency.
 State should be explicit and inspectable.
 Every workflow should be testable.
 Every important run should be traceable.
@@ -139,11 +145,28 @@ High-risk path:
 
 ```text
 high-risk ticket
+→ preview-only action review is generated
 → approval_status = pending
 → human approval decision recorded in data/approvals.json
 → approval decision can be retrieved after API restart
 → resume endpoint routes approved/rejected decisions safely
 → no real write action is executed yet
+```
+
+Tool layer:
+
+```text
+billing_node            → lookup_billing_record        → read-only evidence
+technical_node          → get_technical_diagnostics    → read-only diagnostic checklist
+high_risk_review_node   → preview_high_risk_action     → preview-only action review
+```
+
+Tool safety boundary:
+
+```text
+Read-only tools may run automatically.
+Preview-only tools may run before approval.
+Write tools must not run without explicit approval.
 ```
 
 ---
@@ -235,7 +258,7 @@ This repo is intended to grow into a complete Agentic AI systems portfolio.
 
 Planned projects:
 
-1. **Support Ticket Triage Agent v2** — graph routing, HITL foundation, FastAPI, evals, tracing
+1. **Support Ticket Triage Agent v2** — graph routing, HITL foundation, FastAPI, evals, tracing, JSON-backed approvals, simulated tool layer
 2. **Refund Decision Agent** — RAG + policy grounding + billing tools
 3. **Human Approval Action Agent** — database-backed approvals, durable checkpointing, approval gates, idempotent write tools
 4. **Multi-Agent Incident Investigator** — supervisor-worker orchestration across simulated systems
@@ -255,6 +278,8 @@ This repo is designed to demonstrate skills relevant to AI Engineer, Agentic AI 
 - human-in-the-loop workflow design
 - approval safety patterns
 - JSON-backed local approval persistence
+- read-only vs preview-only tool design
+- tool-result state capture
 - FastAPI service design
 - local evaluation design
 - pytest-based test coverage
@@ -270,10 +295,10 @@ This repo is designed to demonstrate skills relevant to AI Engineer, Agentic AI 
 ```text
 Project 1: Support Ticket Triage Agent v2
 Status: active / portfolio-ready baseline
-Tests: 29/29 passing
+Tests: 34/34 passing
 Evals: 5/5 passing
 CI: enabled
-Next major milestone: database-backed approval persistence and durable LangGraph checkpoint/resume for HITL workflows
+Next major milestone: approved write-tool execution path with idempotency, then database-backed approval persistence and durable LangGraph checkpoint/resume
 ```
 
 ---
