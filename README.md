@@ -1,16 +1,85 @@
 # Agentic AI Systems Lab
 
-A portfolio-focused monorepo for building production-style agentic AI systems.
+A portfolio-focused monorepo for building production-style agentic AI systems with graph orchestration, human-in-the-loop workflows, tool safety, persistence, checkpointing, evaluation, observability, and API service layers.
 
-This repository is designed as a hands-on lab for learning and demonstrating modern AI engineering patterns: graph-based orchestration, typed state, tool safety, human-in-the-loop workflows, idempotent write-tool execution, persistence, checkpointing, interrupt-style pause/resume, evaluation, observability, API service design, and production-oriented repo practices.
-
-The goal is not to collect toy demos. The goal is to build progressively stronger, interview-ready, and portfolio-ready agentic AI projects that demonstrate how AI systems can be engineered with control, safety, traceability, and tests.
+This repository is organized as a growing lab of progressively stronger agentic AI projects. Each project is intended to be independently understandable, runnable, and portfolio-ready, while the monorepo shows the broader learning path across agent architecture patterns.
 
 ---
 
-## Current Project
+## Tech Stack Snapshot
 
-### 1. Support Ticket Triage Agent
+- **Agent Orchestration:** LangGraph, typed graph state, checkpointing, interrupt/resume workflows
+- **Backend / API:** Python, FastAPI, Uvicorn, Pydantic
+- **Persistence:** SQLite, local JSON reference stores
+- **Tooling / Safety:** read-only tools, preview-only tools, approved-write simulations, idempotency keys
+- **Evaluation / Observability:** pytest, local eval runner, trace events, LangSmith metadata
+- **Engineering:** Docker, Makefile, GitHub Actions, cost-safe mock mode
+
+---
+
+## Why This Monorepo Exists
+
+Modern AI engineering is moving beyond simple prompt-response applications.
+
+Production-style agentic systems need:
+
+- explicit state management
+- deterministic routing around LLM outputs
+- graph-based workflow control
+- typed schemas and structured outputs
+- safe tool boundaries
+- human approval gates
+- idempotency for write actions
+- persistent approval and execution records
+- checkpointed workflow execution
+- interrupt-style human-in-the-loop pause/resume
+- local and CI-based evaluation
+- observability and debugging hooks
+- reproducible API/demo workflows
+- cost-safe development modes
+
+This monorepo is a practical portfolio lab for building those skills through concrete projects rather than isolated experiments.
+
+---
+
+## What This Repository Builds
+
+This repository builds a sequence of agentic AI systems that increase in complexity over time.
+
+Current and planned project themes include:
+
+- graph-based support ticket triage
+- refund decisioning with policy grounding
+- human-approved action execution
+- multi-agent incident investigation
+- enterprise AgentOps workflows
+
+The intended progression is:
+
+```text
+single graph agent
+→ HITL approval workflow
+→ RAG + policy-grounded decision agent
+→ richer action approval systems
+→ multi-agent orchestration
+→ AgentOps / monitoring / evaluation layer
+```
+
+---
+
+## Current Project Status
+
+| Project | Status | Focus |
+|---|---|---|
+| Support Ticket Triage Agent | Complete / portfolio-ready foundation | Graph routing, HITL approval, simulated tools, idempotency, SQLite persistence, checkpointed graphs, interrupt-style pause/resume, FastAPI, evals |
+| Refund Decision Agent | Planned next | RAG, policy grounding, refund decision workflow, billing/refund tool safety |
+| Human Approval Action Agent | Planned | richer approval policies, durable checkpointing, idempotent write-tool execution |
+| Multi-Agent Incident Investigator | Planned | supervisor-worker orchestration across simulated systems |
+| Enterprise AgentOps Workflow System | Planned | tracing, eval dashboards, deployment, monitoring, regression testing |
+
+---
+
+## Project 1 — Support Ticket Triage Agent
 
 Location:
 
@@ -18,48 +87,65 @@ Location:
 projects/support_ticket_triage_agent/
 ```
 
-A LangGraph-based support ticket triage agent with:
-
-- graph-based workflow orchestration
-- typed state
-- mock and LLM classifier modes
-- deterministic routing
-- risk-aware high-risk review path
-- workflow path tracking
-- structured trace events
-- simulated read-only, preview-only, and approved-write tool layers
-- tool-result capture in graph state
-- approved simulated write-tool execution
-- idempotency-protected action execution
-- SQLite-backed approval and action execution persistence
-- checkpointed graph variants with `thread_id`
-- checkpointed FastAPI endpoints
-- true interrupt-style HITL graph experiment using `interrupt()` and `Command(resume=...)`
-- local evals
-- pytest coverage
-- LangSmith metadata
-- FastAPI endpoints
-- GitHub Actions CI
-- HITL design documentation
-
-Current verification status:
-
-```text
-pytest: 70/70 passed
-local evals: 5/5 passed
-CI: enabled
-```
-
-Project README:
+Project-specific README:
 
 ```text
 projects/support_ticket_triage_agent/README.md
 ```
 
-Detailed HITL design:
+For full implementation details, setup instructions, architecture diagrams, demo commands, tests, Docker usage, and design tradeoffs, refer to:
 
 ```text
-projects/support_ticket_triage_agent/docs/hitl_design.md
+projects/support_ticket_triage_agent/README.md
+```
+
+### One-Line Summary
+
+A LangGraph-based support ticket triage agent that routes tickets through deterministic graph workflows, isolates high-risk requests, supports human approval, simulates approved write-tool execution with idempotency, persists approvals/actions in SQLite, and demonstrates checkpointed plus interrupt-style HITL flows.
+
+### Current Verification
+
+```text
+pytest: 70/70 passed
+local evals: 5/5 passed
+GitHub Actions: enabled
+```
+
+### Project 1 Highlights
+
+- typed graph state with explicit workflow tracking
+- mock and LLM classifier modes
+- deterministic routing after classification
+- high-risk review path
+- read-only, preview-only, and approved-write simulated tools
+- approval-gated simulated write execution
+- idempotency-protected action execution
+- SQLite-backed approval and action execution persistence
+- checkpointed graph variants with `thread_id`
+- checkpointed FastAPI endpoints
+- true interrupt-style HITL experiment with `interrupt()` and `Command(resume=...)`
+- local eval runner and pytest coverage
+- Docker, Makefile, and demo scripts
+- GitHub Actions CI in cost-safe mock mode
+
+### Project 1 High-Level Flow
+
+```text
+support ticket
+→ validate input
+→ classify ticket
+→ deterministic route
+→ standard support node OR high-risk review
+→ preview-only action review for high-risk requests
+→ approval decision
+→ approved simulated write execution with idempotency
+→ persisted audit-friendly result
+```
+
+For the detailed project-level README, use:
+
+```text
+projects/support_ticket_triage_agent/README.md
 ```
 
 ---
@@ -75,27 +161,15 @@ agentic-ai-systems-lab/
 ├── projects/
 │   └── support_ticket_triage_agent/
 │       ├── app/
-│       │   ├── api.py
-│       │   ├── checkpointing.py
-│       │   ├── db.py
-│       │   ├── graph.py
-│       │   ├── nodes.py
-│       │   ├── schemas.py
-│       │   ├── sqlite_action_store.py
-│       │   ├── sqlite_approval_store.py
-│       │   ├── state.py
-│       │   ├── tools.py
-│       │   └── write_tools.py
 │       ├── data/
-│       │   ├── action_executions.json
-│       │   └── approvals.json
-│       │   # support_agent.db is generated locally and ignored by Git
 │       ├── docs/
-│       │   ├── architecture.md
-│       │   └── hitl_design.md
 │       ├── evals/
 │       ├── scripts/
 │       ├── tests/
+│       ├── .dockerignore
+│       ├── .env.example
+│       ├── Dockerfile
+│       ├── Makefile
 │       ├── README.md
 │       └── requirements.txt
 │
@@ -105,263 +179,9 @@ agentic-ai-systems-lab/
 
 ---
 
-## Why This Repo Exists
+## Quickstart for Current Project
 
-Modern AI engineering is moving beyond single prompt-response apps.
-
-Production-grade agentic systems need:
-
-- explicit state management
-- deterministic routing
-- graph orchestration
-- typed schemas
-- structured outputs
-- safe tool boundaries
-- human approval gates
-- idempotency for write actions
-- persistent approval and action records
-- checkpointed workflow execution
-- interrupt-style human-in-the-loop pause/resume
-- observability and tracing
-- local and CI-based evaluations
-- API service layers
-- cost-safe development modes
-- clear deployment and debugging practices
-
-This repo is a practical learning path for those skills.
-
----
-
-## Core Engineering Principles
-
-```text
-LLMs should reason and classify.
-Code should control workflow execution.
-High-risk actions should require approval.
-Tools should be typed, bounded, and separated by risk.
-Read-only tools can collect evidence automatically.
-Preview-only tools can support human review.
-Approved write simulations require explicit approval and idempotency.
-State should be explicit and inspectable.
-Persistence should make approval and execution records auditable.
-Checkpointing should use stable thread IDs.
-Interrupt-style workflows should pause safely and resume explicitly.
-Every workflow should be testable.
-Every important run should be traceable.
-Local development should be cost-safe.
-```
-
----
-
-## Project 1: Support Ticket Triage Agent
-
-### Architecture Summary
-
-Standard triage graph:
-
-```text
-User ticket
-   ↓
-validate_input
-   ↓
-classify_ticket
-   ↓
-route_after_classification
-   ├── billing_node
-   ├── technical_node
-   ├── general_node
-   └── high_risk_review_node
-```
-
-Approval resume graph:
-
-```text
-approval_resume_entry_node
-   ├── approval_approved_node
-   │      ↓
-   │   execute_approved_action_node
-   │      ↓
-   │     END
-   ├── approval_rejected_node → END
-   └── approval_blocked_node  → END
-```
-
-Interruptible HITL graph experiment:
-
-```text
-validate_input
-→ classify_ticket
-→ high_risk_review_node
-→ human_approval_interrupt_node
-→ interrupt(...)
-→ Command(resume={...})
-→ approval_approved_node / approval_rejected_node
-→ execute_approved_action_node if approved
-```
-
----
-
-## Project 1 Milestones Completed
-
-### Milestone A — Approved Simulated Write-Tool Execution
-
-Project 1 supports an approved action execution path:
-
-```text
-approval recorded
-→ resume safely
-→ execute approved simulated write tool
-→ store action execution record
-→ prevent duplicate execution with idempotency
-```
-
-Key behavior:
-
-```text
-first approved resume  → simulated write action executes
-second approved resume → duplicate execution is skipped
-rejected approval      → no write action executes
-```
-
-This demonstrates approval-gated write-tool safety and idempotency.
-
----
-
-### Milestone B — SQLite-Backed Persistence
-
-Project 1 uses SQLite-backed runtime persistence:
-
-```text
-data/support_agent.db
-```
-
-Runtime tables:
-
-```text
-approval_records
-action_execution_records
-```
-
-Current behavior:
-
-```text
-approval decisions       → SQLite approval_records
-action execution records → SQLite action_execution_records
-```
-
-The earlier JSON-backed stores remain as simple reference implementations but are no longer the active runtime persistence layer.
-
----
-
-### Milestone C — Checkpointing and True Interrupt-Style HITL
-
-Project 1 now includes checkpointed graph execution and a true interrupt-style HITL graph experiment.
-
-Checkpointing helpers:
-
-```text
-build_thread_id(ticket_id)
-build_graph_config(thread_id)
-create_memory_checkpointer()
-```
-
-Checkpointed graph variants:
-
-```text
-checkpointed_ticket_graph
-checkpointed_approval_resume_graph
-```
-
-Checkpointed API endpoints:
-
-```text
-POST /tickets/triage/checkpointed
-POST /tickets/{ticket_id}/resume/checkpointed
-```
-
-True interrupt-style graph experiment:
-
-```text
-interruptible_ticket_graph
-human_approval_interrupt_node
-interrupt(...)
-Command(resume={...})
-```
-
-This demonstrates graph-level pause/resume behavior with the same `thread_id`.
-
----
-
-## Project 1 HITL Flow Summary
-
-Stable API-level HITL flow:
-
-```text
-POST /tickets/triage
-→ high-risk ticket routes to high_risk_review_node
-→ preview_high_risk_action generates preview-only action review
-→ approval_status = pending
-→ no write action executed
-
-POST /tickets/{ticket_id}/approval
-→ approval/rejection stored in SQLite
-
-POST /tickets/{ticket_id}/resume
-→ approved decision executes simulated write tool once
-→ repeated approved resume is idempotency-protected
-→ rejected decision blocks safely
-```
-
-Checkpointed API flow:
-
-```text
-POST /tickets/triage/checkpointed
-→ runs checkpointed_ticket_graph
-→ returns thread_id
-
-POST /tickets/{ticket_id}/resume/checkpointed
-→ runs checkpointed_approval_resume_graph
-→ returns thread_id and last_tool_result
-```
-
-Interruptible graph experiment:
-
-```text
-interruptible_ticket_graph.invoke(initial_state, config={"configurable": {"thread_id": ...}})
-→ high-risk request reaches human_approval_interrupt_node
-→ graph pauses with interrupt(...)
-
-interruptible_ticket_graph.invoke(Command(resume={...}), config=same_config)
-→ same graph thread resumes
-→ approved path executes simulated write tool
-→ rejected path blocks safely
-```
-
----
-
-## Project 1 Tool Layer
-
-```text
-billing_node              → lookup_billing_record              → read-only evidence
-technical_node            → get_technical_diagnostics          → read-only diagnostic checklist
-high_risk_review_node     → preview_high_risk_action           → preview-only action review
-execute_approved_action_node → execute_approved_high_risk_action → approved write simulation
-```
-
-Tool safety boundary:
-
-```text
-Read-only tools may run automatically.
-Preview-only tools may run before approval.
-Approved write simulations may run only after approval.
-Real write tools are intentionally out of scope.
-```
-
----
-
-## Running Project 1 Locally
-
-From the project folder:
+From the repository root:
 
 ```zsh
 cd projects/support_ticket_triage_agent
@@ -371,66 +191,62 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Run local tests:
+Run tests:
 
 ```zsh
-pytest
+make test
 ```
 
-Run local evals:
+Run evals:
 
 ```zsh
-python -m evals.run_eval
+make eval
 ```
 
-Run the FastAPI service:
+Run full local verification:
 
 ```zsh
-uvicorn app.api:app --reload
+make check
 ```
 
-Then open:
+Run the API:
+
+```zsh
+make run-api
+```
+
+For complete usage, demos, Docker commands, and API examples, see:
 
 ```text
-http://127.0.0.1:8000/docs
+projects/support_ticket_triage_agent/README.md
 ```
 
 ---
 
-## Cost-Safe Development
+## Evaluation and CI
 
-Project 1 supports a local mock classifier mode:
+The current project includes local verification and CI checks.
 
-```text
-CLASSIFIER_MODE=mock
-```
-
-This allows tests, evals, and API development without repeatedly calling an LLM provider.
-
-LLM-backed classification is still supported through:
+Local verification:
 
 ```text
-CLASSIFIER_MODE=llm
+pytest: 70/70 passed
+python -m evals.run_eval: 5/5 passed
 ```
 
----
-
-## CI
-
-This repository includes GitHub Actions CI for Project 1:
+CI workflow:
 
 ```text
 .github/workflows/support-ticket-triage-ci.yml
 ```
 
-The CI workflow runs:
+The workflow targets:
 
 ```text
-pytest
-python -m evals.run_eval
+projects/support_ticket_triage_agent/**
 ```
 
-CI uses cost-safe settings:
+and runs in cost-safe mock mode:
 
 ```text
 CLASSIFIER_MODE=mock
@@ -441,60 +257,186 @@ OPENAI_API_KEY=dummy-ci-key
 
 ---
 
+## Design Principles Across Projects
+
+These principles guide every project in this monorepo:
+
+```text
+LLMs should reason and classify.
+Code should control workflow execution.
+State should be explicit and inspectable.
+Tools should be typed, bounded, and separated by risk.
+Read-only tools can collect evidence automatically.
+Preview-only tools can support human review.
+Approved write simulations require explicit approval and idempotency.
+High-risk actions should require approval.
+Persistence should make approval and execution records auditable.
+Checkpointing should use stable thread IDs.
+Interrupt-style workflows should pause safely and resume explicitly.
+Every workflow should be testable.
+Every important run should be traceable.
+Local development should be cost-safe.
+```
+
+---
+
 ## Planned Project Ladder
 
-This repo is intended to grow into a complete Agentic AI systems portfolio.
+### 1. Support Ticket Triage Agent — Complete
 
-Planned projects:
+Focus:
 
-1. **Support Ticket Triage Agent** — graph routing, HITL approval, simulated tools, idempotency, SQLite persistence, checkpointed graphs, interrupt-style pause/resume, FastAPI, evals, tracing
-2. **Refund Decision Agent** — RAG + policy grounding + billing/refund tools
-3. **Human Approval Action Agent** — richer approval policies, durable checkpointing, approval gates, idempotent write tools
-4. **Multi-Agent Incident Investigator** — supervisor-worker orchestration across simulated systems
-5. **Enterprise AgentOps Workflow System** — tracing, eval dashboards, deployment, monitoring, and regression testing
+```text
+graph routing + HITL approval + simulated tools + idempotency + SQLite persistence + checkpointed graphs + interrupt-style pause/resume
+```
+
+Status:
+
+```text
+Complete / portfolio-ready foundation
+```
+
+Details:
+
+```text
+projects/support_ticket_triage_agent/README.md
+```
+
+---
+
+### 2. Refund Decision Agent — Planned Next
+
+Expected focus:
+
+- RAG over refund/support policies
+- policy-grounded refund reasoning
+- structured refund decision output
+- billing/refund tool simulation
+- escalation and approval gates for high-value refunds
+- evaluation over policy-grounded examples
+- FastAPI endpoint for refund decision requests
+
+Likely learning objective:
+
+```text
+move from classification/routing agents to policy-grounded decision agents
+```
+
+---
+
+### 3. Human Approval Action Agent — Planned
+
+Expected focus:
+
+- richer approval policies
+- approval expiration
+- approver identity checks
+- durable checkpointing beyond local memory
+- idempotent write-tool execution patterns
+- audit logs and action reconciliation
+
+Likely learning objective:
+
+```text
+make HITL action execution closer to production-grade control systems
+```
+
+---
+
+### 4. Multi-Agent Incident Investigator — Planned
+
+Expected focus:
+
+- supervisor-worker orchestration
+- specialist agents for logs, metrics, tickets, and alerts
+- evidence aggregation
+- incident summarization
+- escalation recommendations
+
+Likely learning objective:
+
+```text
+learn when multi-agent patterns are useful and how to control them safely
+```
+
+---
+
+### 5. Enterprise AgentOps Workflow System — Planned
+
+Expected focus:
+
+- evaluation dashboards
+- tracing and observability workflows
+- regression testing for agents
+- deployment and monitoring notes
+- failure analysis and replay
+
+Likely learning objective:
+
+```text
+move from agent building to agent operations and reliability engineering
+```
+
+---
+
+## Current Limitations and Scope
+
+This monorepo is a portfolio and learning lab, not a production SaaS deployment.
+
+Current boundaries:
+
+- Project 1 uses simulated tools, not real CRM/billing/admin integrations
+- approved write execution is simulated only
+- SQLite persistence is local
+- checkpointing currently uses local/in-memory checkpointers where applicable
+- no hosted production deployment is claimed
+- no production auth/RBAC is implemented yet
+- future projects are planned but not yet implemented
+
+These boundaries are intentional and documented so the repository demonstrates engineering patterns without overclaiming production impact.
 
 ---
 
 ## Skills Demonstrated
 
-This repo is designed to demonstrate skills relevant to AI Engineer, Agentic AI Engineer, and LLM Engineer roles:
+### Agentic AI / LLM Systems
 
-- LangGraph orchestration
-- graph-based workflow design
+- graph-based orchestration
 - typed agent state
+- deterministic routing around model outputs
 - structured classifier outputs
-- deterministic routing
-- human-in-the-loop workflow design
-- approval safety patterns
-- read-only vs preview-only vs approved-write tool design
-- tool-result state capture
-- idempotency for write actions
-- SQLite-backed local persistence
+- HITL workflow design
 - checkpointed graph execution
-- interrupt-style HITL pause/resume
+- interrupt-style pause/resume
+
+### Tool Safety / Guardrails
+
+- read-only tools
+- preview-only tools
+- approved-write simulations
+- idempotency keys
+- approval-gated execution
+- safe handling of high-risk requests
+
+### Backend / Systems Engineering
+
 - FastAPI service design
-- local evaluation design
-- pytest-based test coverage
-- LangSmith observability metadata
-- CI/CD basics for agent systems
-- cost-aware local development
-- production-style repository hygiene
+- SQLite-backed local persistence
+- Dockerized local API runs
+- Makefile-based command interface
+- GitHub Actions CI
+- pytest-based coverage
 
----
+### Evaluation / Observability
 
-## Current Status
-
-```text
-Project 1: Support Ticket Triage Agent
-Status: core engineering milestones complete / final polish in progress
-Tests: 70/70 passing
-Evals: 5/5 passing
-CI: enabled
-Next milestone: final polish — demo scripts, architecture docs, Makefile, Dockerfile, and root/project documentation cleanup
-```
+- local eval runner
+- workflow-path assertions
+- structured trace events
+- LangSmith metadata/tags
+- cost-safe mock mode for repeatable testing
 
 ---
 
 ## Author Notes
 
-This lab is being built incrementally to mirror how production AI systems are actually engineered: small safe changes, tests first where possible, explicit state, observable workflows, approval gates, idempotency, persistence, checkpointing, and clear separation between prototype behavior and production-ready behavior.
+This lab is being built incrementally to mirror how production AI systems are engineered: small safe changes, explicit state, deterministic control flow, approval gates, idempotency, persistence, checkpointing, evaluation, and clear separation between prototype behavior and production-ready behavior.
