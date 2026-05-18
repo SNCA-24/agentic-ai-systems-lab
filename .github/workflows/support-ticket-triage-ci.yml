@@ -4,12 +4,12 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "projects/support_ticket_triage_agent_v2/**"
+      - "projects/support_ticket_triage_agent/**"
       - ".github/workflows/support-ticket-triage-ci.yml"
   pull_request:
     branches: ["main"]
     paths:
-      - "projects/support_ticket_triage_agent_v2/**"
+      - "projects/support_ticket_triage_agent/**"
       - ".github/workflows/support-ticket-triage-ci.yml"
 
 jobs:
@@ -18,13 +18,13 @@ jobs:
 
     defaults:
       run:
-        working-directory: projects/support_ticket_triage_agent_v2
+        working-directory: projects/support_ticket_triage_agent
 
     env:
       CLASSIFIER_MODE: mock
       APP_ENV: ci
       LANGSMITH_TRACING: "false"
-      LANGSMITH_PROJECT: support-ticket-triage-agent-v2
+      LANGSMITH_PROJECT: support-ticket-triage-agent
       LANGSMITH_RUN_TAG_PREFIX: support-ticket-triage
       OPENAI_MODEL: gpt-5.4-nano
       OPENAI_API_KEY: dummy-ci-key

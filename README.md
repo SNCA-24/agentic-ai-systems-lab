@@ -10,12 +10,12 @@ The goal is not to collect toy demos. The goal is to build progressively stronge
 
 ## Current Project
 
-### 1. Support Ticket Triage Agent v2
+### 1. Support Ticket Triage Agent
 
 Location:
 
 ```text
-projects/support_ticket_triage_agent_v2/
+projects/support_ticket_triage_agent/
 ```
 
 A LangGraph-based support ticket triage agent with:
@@ -53,13 +53,13 @@ CI: enabled
 Project README:
 
 ```text
-projects/support_ticket_triage_agent_v2/README.md
+projects/support_ticket_triage_agent/README.md
 ```
 
 Detailed HITL design:
 
 ```text
-projects/support_ticket_triage_agent_v2/docs/hitl_design.md
+projects/support_ticket_triage_agent/docs/hitl_design.md
 ```
 
 ---
@@ -73,7 +73,7 @@ agentic-ai-systems-lab/
 │       └── support-ticket-triage-ci.yml
 │
 ├── projects/
-│   └── support_ticket_triage_agent_v2/
+│   └── support_ticket_triage_agent/
 │       ├── app/
 │       │   ├── api.py
 │       │   ├── checkpointing.py
@@ -153,7 +153,7 @@ Local development should be cost-safe.
 
 ---
 
-## Project 1: Support Ticket Triage Agent v2
+## Project 1: Support Ticket Triage Agent
 
 ### Architecture Summary
 
@@ -364,7 +364,7 @@ Real write tools are intentionally out of scope.
 From the project folder:
 
 ```zsh
-cd projects/support_ticket_triage_agent_v2
+cd projects/support_ticket_triage_agent
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -447,7 +447,7 @@ This repo is intended to grow into a complete Agentic AI systems portfolio.
 
 Planned projects:
 
-1. **Support Ticket Triage Agent v2** — graph routing, HITL approval, simulated tools, idempotency, SQLite persistence, checkpointed graphs, interrupt-style pause/resume, FastAPI, evals, tracing
+1. **Support Ticket Triage Agent** — graph routing, HITL approval, simulated tools, idempotency, SQLite persistence, checkpointed graphs, interrupt-style pause/resume, FastAPI, evals, tracing
 2. **Refund Decision Agent** — RAG + policy grounding + billing/refund tools
 3. **Human Approval Action Agent** — richer approval policies, durable checkpointing, approval gates, idempotent write tools
 4. **Multi-Agent Incident Investigator** — supervisor-worker orchestration across simulated systems
@@ -485,7 +485,7 @@ This repo is designed to demonstrate skills relevant to AI Engineer, Agentic AI 
 ## Current Status
 
 ```text
-Project 1: Support Ticket Triage Agent v2
+Project 1: Support Ticket Triage Agent
 Status: core engineering milestones complete / final polish in progress
 Tests: 70/70 passing
 Evals: 5/5 passing

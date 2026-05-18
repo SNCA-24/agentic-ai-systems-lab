@@ -1,8 +1,0 @@
-langgraph
-pydantic
-typing-extensions
-openai
-python-dotenv
-pytest
-fastapi
-uvicorn
