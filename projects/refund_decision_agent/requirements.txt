@@ -1,0 +1,10 @@
+langgraph
+langchain-core
+langsmith
+openai
+pydantic
+python-dotenv
+fastapi
+uvicorn
+pytest
+typing-extensions

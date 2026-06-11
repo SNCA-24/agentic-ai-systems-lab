@@ -72,8 +72,8 @@ single graph agent
 | Project | Status | Focus |
 |---|---|---|
 | Support Ticket Triage Agent | Complete / portfolio-ready foundation | Graph routing, HITL approval, simulated tools, idempotency, SQLite persistence, checkpointed graphs, interrupt-style pause/resume, FastAPI, evals |
-| Refund Decision Agent | Planned next | RAG, policy grounding, refund decision workflow, billing/refund tool safety |
-| Human Approval Action Agent | Planned | richer approval policies, durable checkpointing, idempotent write-tool execution |
+| Refund Decision Agent | Complete / portfolio-ready foundation | RAG, policy grounding, mock billing evidence, deterministic refund decisions, JSON persistence, FastAPI, evals |
+| Human Approval Action Agent | Planned next | richer approval policies, durable checkpointing, idempotent write-tool execution |
 | Multi-Agent Incident Investigator | Planned | supervisor-worker orchestration across simulated systems |
 | Enterprise AgentOps Workflow System | Planned | tracing, eval dashboards, deployment, monitoring, regression testing |
 
@@ -150,6 +150,78 @@ projects/support_ticket_triage_agent/README.md
 
 ---
 
+## Project 2 — Refund Decision Agent
+
+Location:
+
+```text
+projects/refund_decision_agent/
+```
+
+Project-specific README:
+
+```text
+projects/refund_decision_agent/README.md
+```
+
+For full implementation details, setup instructions, architecture, demo commands, evals, tests, API usage, and design tradeoffs, refer to:
+
+```text
+projects/refund_decision_agent/README.md
+```
+
+### One-Line Summary
+
+A LangGraph-based refund decision agent that retrieves synthetic refund/cancellation/billing policies, loads mock customer and billing evidence through read-only tools, applies deterministic refund eligibility logic, routes eligible/ineligible/review/escalation cases, persists JSON decision records, and exposes demo/eval/API workflows in cost-safe mock mode.
+
+### Current Verification
+
+```text
+pytest: 66/66 passed
+local evals: 6/6 passed
+demo: 6/6 scenarios completed
+policy demo: 3/3 retrieval scenarios completed
+API tests: 13/13 passed
+```
+
+### Project 2 Highlights
+
+- LangGraph workflow with typed refund decision state
+- deterministic mock classification with approved refund-agent intent labels
+- local Markdown policy retrieval over synthetic refund, cancellation, and billing policies
+- mock read-only customer and billing evidence tools backed by JSON fixtures
+- deterministic refund eligibility logic for duplicate charges, post-cancellation charges, refund windows, high-value refunds, enterprise cases, and conflicting evidence
+- terminal routing across eligible, ineligible, human-review, and escalation paths
+- append-only JSON decision persistence in `data/decision_records.json`
+- workflow-path and trace-event observability
+- FastAPI endpoint for refund decision requests
+- local eval runner and pytest coverage
+- demo and policy retrieval scripts
+- cost-safe `CLASSIFIER_MODE=mock` default
+- no real refund execution, no payment provider integration, and no real customer/payment data
+
+### Project 2 High-Level Flow
+
+```text
+refund request
+→ validate input
+→ classify refund intent
+→ retrieve relevant policy snippets
+→ load mock customer and billing evidence
+→ run deterministic eligibility logic
+→ route to eligible, ineligible, human-review, or escalation response
+→ persist JSON decision record
+→ return grounded response
+```
+
+For the detailed project-level README, use:
+
+```text
+projects/refund_decision_agent/README.md
+```
+
+---
+
 ## Repository Structure
 
 ```text
@@ -159,7 +231,21 @@ agentic-ai-systems-lab/
 │       └── support-ticket-triage-ci.yml
 │
 ├── projects/
-│   └── support_ticket_triage_agent/
+│   ├── support_ticket_triage_agent/
+│   │   ├── app/
+│   │   ├── data/
+│   │   ├── docs/
+│   │   ├── evals/
+│   │   ├── scripts/
+│   │   ├── tests/
+│   │   ├── .dockerignore
+│   │   ├── .env.example
+│   │   ├── Dockerfile
+│   │   ├── Makefile
+│   │   ├── README.md
+│   │   └── requirements.txt
+│   │
+│   └── refund_decision_agent/
 │       ├── app/
 │       ├── data/
 │       ├── docs/
@@ -179,7 +265,9 @@ agentic-ai-systems-lab/
 
 ---
 
-## Quickstart for Current Project
+## Quickstart for Completed Projects
+
+### Project 1 — Support Ticket Triage Agent
 
 From the repository root:
 
@@ -221,17 +309,74 @@ For complete usage, demos, Docker commands, and API examples, see:
 projects/support_ticket_triage_agent/README.md
 ```
 
+### Project 2 — Refund Decision Agent
+
+From the repository root:
+
+```zsh
+cd projects/refund_decision_agent
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Run tests:
+
+```zsh
+make test
+```
+
+Run evals:
+
+```zsh
+make eval
+```
+
+Run demo:
+
+```zsh
+make demo
+```
+
+Run full local verification:
+
+```zsh
+make check
+```
+
+Run the API:
+
+```zsh
+make run-api
+```
+
+For complete usage, demos, API examples, evals, and design tradeoffs, see:
+
+```text
+projects/refund_decision_agent/README.md
+```
+
 ---
 
 ## Evaluation and CI
 
-The current project includes local verification and CI checks.
+The completed projects include local verification checks. Project 1 also includes a GitHub Actions workflow.
 
-Local verification:
+Project 1 local verification:
 
 ```text
 pytest: 70/70 passed
 python -m evals.run_eval: 5/5 passed
+```
+
+Project 2 local verification:
+
+```text
+pytest: 66/66 passed
+python -m evals.run_eval: 6/6 passed
+scripts/run_demo.py: 6/6 scenarios completed
+scripts/run_policy_demo.py: 3/3 retrieval scenarios completed
 ```
 
 CI workflow:
@@ -304,27 +449,43 @@ projects/support_ticket_triage_agent/README.md
 
 ---
 
-### 2. Refund Decision Agent — Planned Next
+### 2. Refund Decision Agent — Complete
 
-Expected focus:
+Focus:
 
-- RAG over refund/support policies
-- policy-grounded refund reasoning
-- structured refund decision output
-- billing/refund tool simulation
-- escalation and approval gates for high-value refunds
-- evaluation over policy-grounded examples
-- FastAPI endpoint for refund decision requests
+```text
+RAG over synthetic refund, cancellation, and billing policies
+policy-grounded refund decisioning
+mock read-only customer and billing evidence tools
+deterministic refund eligibility logic
+structured refund decision output
+escalation and human-review flags for high-value, enterprise, ambiguous, or conflicting cases
+JSON decision persistence
+evaluation over policy-grounded refund examples
+FastAPI endpoint for refund decision requests
+```
 
-Likely learning objective:
+Learning objective:
 
 ```text
 move from classification/routing agents to policy-grounded decision agents
 ```
 
+Status:
+
+```text
+Complete / portfolio-ready foundation
+```
+
+Details:
+
+```text
+projects/refund_decision_agent/README.md
+```
+
 ---
 
-### 3. Human Approval Action Agent — Planned
+### 3. Human Approval Action Agent — Planned Next
 
 Expected focus:
 
@@ -386,12 +547,15 @@ This monorepo is a portfolio and learning lab, not a production SaaS deployment.
 Current boundaries:
 
 - Project 1 uses simulated tools, not real CRM/billing/admin integrations
-- approved write execution is simulated only
-- SQLite persistence is local
-- checkpointing currently uses local/in-memory checkpointers where applicable
+- Project 1 approved write execution is simulated only
+- Project 1 SQLite persistence is local
+- Project 1 checkpointing currently uses local/in-memory checkpointers where applicable
+- Project 2 uses synthetic policies and mock customer/billing fixtures only
+- Project 2 uses read-only evidence tools and does not execute real refunds
+- Project 2 JSON decision persistence is local and demo-oriented
 - no hosted production deployment is claimed
 - no production auth/RBAC is implemented yet
-- future projects are planned but not yet implemented
+- future projects after Project 2 are planned but not yet implemented
 
 These boundaries are intentional and documented so the repository demonstrates engineering patterns without overclaiming production impact.
 
@@ -408,6 +572,8 @@ These boundaries are intentional and documented so the repository demonstrates e
 - HITL workflow design
 - checkpointed graph execution
 - interrupt-style pause/resume
+- policy-grounded decision workflows
+- RAG-backed agent state updates
 
 ### Tool Safety / Guardrails
 
@@ -417,6 +583,8 @@ These boundaries are intentional and documented so the repository demonstrates e
 - idempotency keys
 - approval-gated execution
 - safe handling of high-risk requests
+- read-only evidence tools for refund decisioning
+- human-review flags for high-value or ambiguous financial cases
 
 ### Backend / Systems Engineering
 
@@ -434,6 +602,8 @@ These boundaries are intentional and documented so the repository demonstrates e
 - structured trace events
 - LangSmith metadata/tags
 - cost-safe mock mode for repeatable testing
+- policy-grounded scenario evals
+- workflow-path and final-node assertions across multiple graph agents
 
 ---
 

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "duplicate charge refund",
+    "request_id": "EVAL-001",
+    "customer_id": "cust_001",
+    "user_message": "I was charged twice for my subscription. Can I get one charge refunded?",
+    "expected_refund_eligible": true,
+    "expected_needs_human_review": false,
+    "expected_risk_level": "medium",
+    "expected_final_node": "eligible_response_node"
+  },
+  {
+    "name": "charge after cancellation",
+    "request_id": "EVAL-002",
+    "customer_id": "cust_002",
+    "user_message": "I cancelled yesterday but was charged today. Can I get a refund?",
+    "expected_refund_eligible": true,
+    "expected_needs_human_review": false,
+    "expected_risk_level": "medium",
+    "expected_final_node": "eligible_response_node"
+  },
+  {
+    "name": "outside refund window",
+    "request_id": "EVAL-003",
+    "customer_id": "cust_003",
+    "user_message": "I want a refund even though this charge is outside the refund window.",
+    "expected_refund_eligible": false,
+    "expected_needs_human_review": false,
+    "expected_risk_level": "low",
+    "expected_final_node": "ineligible_response_node"
+  },
+  {
+    "name": "high-value enterprise refund",
+    "request_id": "EVAL-004",
+    "customer_id": "cust_004",
+    "user_message": "Please review a refund for our enterprise annual subscription.",
+    "expected_refund_eligible": true,
+    "expected_needs_human_review": true,
+    "expected_risk_level": "high",
+    "expected_final_node": "human_review_required_node"
+  },
+  {
+    "name": "conflicting evidence",
+    "request_id": "EVAL-005",
+    "customer_id": "cust_005",
+    "user_message": "The billing evidence is conflicting and I need help with this refund.",
+    "expected_refund_eligible": null,
+    "expected_needs_human_review": true,
+    "expected_risk_level": "high",
+    "expected_final_node": "human_review_required_node"
+  },
+  {
+    "name": "missing customer",
+    "request_id": "EVAL-006",
+    "customer_id": "cust_missing",
+    "user_message": "I need a refund for a charge on my missing account.",
+    "expected_refund_eligible": null,
+    "expected_needs_human_review": true,
+    "expected_risk_level": "high",
+    "expected_final_node": "escalation_response_node"
+  }
+]

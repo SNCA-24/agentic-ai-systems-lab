@@ -1,0 +1,47 @@
+[
+  {
+    "customer_id": "cust_001",
+    "account_type": "standard",
+    "subscription_status": "active",
+    "plan_name": "Pro Monthly",
+    "signup_date": "2026-03-15T00:00:00Z",
+    "cancellation_timestamp": null,
+    "refund_history": []
+  },
+  {
+    "customer_id": "cust_002",
+    "account_type": "standard",
+    "subscription_status": "cancelled",
+    "plan_name": "Starter Monthly",
+    "signup_date": "2026-01-10T00:00:00Z",
+    "cancellation_timestamp": "2026-05-02T09:15:00Z",
+    "refund_history": []
+  },
+  {
+    "customer_id": "cust_003",
+    "account_type": "standard",
+    "subscription_status": "active",
+    "plan_name": "Basic Monthly",
+    "signup_date": "2025-11-01T00:00:00Z",
+    "cancellation_timestamp": null,
+    "refund_history": []
+  },
+  {
+    "customer_id": "cust_004",
+    "account_type": "enterprise",
+    "subscription_status": "active",
+    "plan_name": "Enterprise Annual",
+    "signup_date": "2026-01-01T00:00:00Z",
+    "cancellation_timestamp": null,
+    "refund_history": []
+  },
+  {
+    "customer_id": "cust_005",
+    "account_type": "standard",
+    "subscription_status": "active",
+    "plan_name": "Growth Monthly",
+    "signup_date": "2026-02-20T00:00:00Z",
+    "cancellation_timestamp": null,
+    "refund_history": []
+  }
+]
